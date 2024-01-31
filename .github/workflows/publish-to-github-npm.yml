@@ -9,13 +9,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           registry-url: 'https://registry.npmjs.org'
           scope: '@pbvision'
       - name: Publish
-        run: npm publish --access public
+        run: |
+          before=${{ github.event.before }}
+          after=${{ github.event.after }}
+          echo from ${before} to ${after}
+          git diff ${before} ${after} package.json | fgrep '"version": "' && changed=1 || changed=0
+          if [ "$changed" == "1" ]; then
+            npm publish --access public
+          else
+            echo 'version was not changed; nothing to publish'
+          fi
         shell: bash
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
