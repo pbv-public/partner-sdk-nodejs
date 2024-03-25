@@ -8,6 +8,8 @@ standard length game, so we'll notify your servers when the results are ready.
   - [Step 1: Get API Access](#step-1-get-api-access)
   - [Step 2: Webhook Setup](#step-2-webhook-setup)
   - [Step 3: Send Videos](#step-3-send-videos)
+    - [Option 1: PBV Downloads your video from a URL](#option-1-pbv-downloads-your-video-from-a-url)
+    - [Option 2: Upload your video](#option-2-upload-your-video)
   - [Step 4: Video Processing Done](#step-4-video-processing-done)
 - [SDK Setup](#sdk-setup)
 - [Video Guidelines](#video-guidelines)
@@ -44,6 +46,8 @@ curl -X POST \
 
 ### Step 3: Send Videos
 
+#### Option 1: PBV Downloads your video from a URL
+
 First, upload a video to a _publicly_ accessible URL on your server. For best
 results, videos should follow our [guidelines](#video-guidelines).
 
@@ -53,8 +57,8 @@ Next, tell us to download and work on the video. You can do this using our SDK:
 import { PBVision } from '@pbvision/partner-sdk'
 
 const pbv = new PBVision(YOUR_API_KEY)
-const playerEmails = [] // optional!
-await pbv.sendVideoUrlToDownload(YOUR_VIDEO_URL, playerEmails)
+const userEmails = [] // optional!
+await pbv.sendVideoUrlToDownload(YOUR_VIDEO_URL, userEmails)
 ```
 
 Alternatively, you can just use `curl`:
@@ -65,6 +69,24 @@ curl -X POST \
      -H 'Content-Type: application/json' \
      -d '{"url": "https://YOUR_VIDEO_URL", "userEmails": ["test@example.com"]}' \
      https://api-ko3kowqi6a-uc.a.run.app/partner/add_video_by_url
+```
+
+#### Option 2: Upload your video
+
+You can directly upload your video from a file using the SDK too:
+
+```javascript
+import { PBVision } from '@pbvision/partner-sdk'
+
+const pbv = new PBVision(YOUR_API_KEY)
+// you can omit this metadata, or provide it-- whatever you'd like!
+const optionalMetadata = {
+  userEmails: [],
+  name: 'Dink Championship 2024',
+  desc: 'A longer description, if you want',
+  gameStartEpoch: 1711393200 // when the game was played
+}
+await pbv.uploadVideo(YOUR_VIDEO_FILENAME, optionalMetadata)
 ```
 
 ### Step 4: Video Processing Done

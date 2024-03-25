@@ -1,14 +1,29 @@
 import assert from 'node:assert'
+import fs from 'node:fs'
 
+import { makeSignedGoogleCloudStorageVideoObjectName } from './video-object-name.js'
 import fetch from 'node-fetch'
 
+const ENVIRONMENTS = {
+  test: {
+    apiServer: 'https://api-ko3kowqi6a-uc.a.run.app',
+    firebaseConfig: {
+      apiKey: 'AIzaSyCV1uh4fM7IFopuZOJ306oVWLV3cKLijFc',
+      projectId: 'pbv-dev',
+      appId: '1:542837591762:web:06f45c0d7a7e62f25aa70b'
+    }
+  }
+}
+
+/** @public */
 export class PBVision {
-  constructor (apiKey, server = 'https://api-ko3kowqi6a-uc.a.run.app') {
+  constructor (apiKey, config = ENVIRONMENTS.test) {
     assert(apiKey && apiKey.length === 31 && apiKey.indexOf('_') === 10,
       `invalid API key: ${apiKey}`)
 
     this.apiKey = apiKey
-    this.server = server
+    this.server = config.apiServer
+    this.isDev = config === ENVIRONMENTS.test
   }
 
   /**
@@ -28,16 +43,14 @@ export class PBVision {
    * processing is complete, your webhook URL will receive a callback.
    *
    * @param {string} videoUrl the publicly available URL of the video
-   * @param {Array<string>} [playerEmails] the email addresses of players in
+   * @param {Array<string>} [userEmails] the email addresses of players in
    *   this video; they'll be notified when the video is done processing
-   * @returns
    */
-  async sendVideoUrlToDownload (videoUrl, playerEmails = []) {
+  async sendVideoUrlToDownload (videoUrl, userEmails = []) {
     assert(typeof videoUrl === 'string' && videoUrl.startsWith('http'),
       'URL must be a string beginning with http')
     assert(videoUrl.endsWith('.mp4'), 'video URL must have the .mp4 extension')
-    return this.__callAPI(
-      'add_video_by_url', { url: videoUrl, userEmails: playerEmails })
+    this.__callAPI('add_video_by_url', { url: videoUrl, userEmails })
   }
 
   async __callAPI (path, body) {
@@ -50,10 +63,114 @@ export class PBVision {
       compress: true,
       body: JSON.stringify(body)
     })
+    const respBody = await resp.text()
     if (resp.ok) {
-      return true
+      return respBody || true
     }
-    const errBody = await resp.text()
-    throw new Error(`PB Vision API ${path} failed (${resp.status}): ${errBody}`)
+    throw new Error(`PB Vision API ${path} failed (${resp.status}): ${respBody}`)
   }
+
+  /**
+   * Information about the Video that can be set prior to it being uploaded.
+   * @typedef {Object} VideoMetadata
+   * @property {Array<string>} userEmails a list of email addresses of up to 4
+   *   players who were playing in the game; they will also be notified when
+   *   the video processing is complete (unless they have these notifications
+   *   disabled)
+   * @property {string} [name] the title of the game (if omitted, we'll use the
+   *   time of the game, or if that isn't provided then the time of the upload)
+   * @property {string} [desc] a longer description of the game
+   * @property {integer} [gameStartEpoch] the epoch at which the game started
+   */
+
+  /**
+   * Upload a video for processing by the AI.
+   * @param {string} mp4Filename
+   * @param {VideoMetadata} [metadata]
+   * @returns {string} the full Google Cloud Storage filename which this was
+   *   uploaded to
+   */
+  async uploadVideo (mp4Filename, { userEmails = [], name, desc, gameStartEpoch } = {}) {
+    // get the upload signing key if we didn't get it earlier
+    if (!this.signingKey) {
+      this.signingKey = await this.__callAPI('get_signing_key')
+    }
+
+    // create a unique, signed upload name
+    const uid = this.apiKey.split('_')[0]
+    const bucket = `pbv-uploads${this.isDev ? '-dev' : ''}`
+    const objName = makeSignedGoogleCloudStorageVideoObjectName({
+      uploaderUID: uid,
+      signingKey: this.signingKey,
+      bucket
+    })
+
+    // if given extra information about this video, upload that first
+    if (userEmails.length || name || desc || gameStartEpoch) {
+      const body = { objName, userEmails, name, desc, gameStartEpoch }
+      await this.__callAPI('set_pre_upload_metadata', body)
+    }
+
+    await uploadToGCS(bucket, objName, mp4Filename)
+    return objName
+  }
+}
+
+async function uploadToGCS (bucket, objName, filename) {
+  // request to start a new upload
+  const url = `https://storage.googleapis.com/upload/storage/v1/b/${bucket}/o?uploadType=resumable&name=${objName}`
+  const numBytesTotal = fs.statSync(filename).size
+  let headers = { 'X-Upload-Content-Length': numBytesTotal }
+  let resp = await fetch(url, { method: 'POST', headers })
+  if (!resp.ok) {
+    throw new Error(`PB Vision Upload failed to initialize (${resp.status}): ${await resp.text()}`)
+  }
+  const sessionURI = resp.headers.get('Location')
+
+  // determine how much data to read from the file at once; larger tends to
+  // result in faster uploads but also has a bigger memory footprint
+  const minChunkSz = 256 * 1024 // this is the *minimum* size
+  const targetChunkSzMB = 8
+  const chunkSize = Math.max(minChunkSz, targetChunkSzMB * 1024 * 1024)
+
+  // upload one chunk at a time until it is done successfully
+  let startIdx = 0
+  while (startIdx < numBytesTotal) {
+    let endIdx = startIdx + chunkSize - 1
+    endIdx = Math.min(endIdx, numBytesTotal - 1)
+    const thisChunkSize = endIdx - startIdx + 1
+
+    // read just the chunk we need from the file
+    const streamPromise = new Promise((resolve, reject) => {
+      const chunk = Buffer.alloc(thisChunkSize)
+      let chunkBytesRead = 0
+      const stream = fs.createReadStream(
+        filename, { start: startIdx, end: endIdx })
+      stream.on('data', x => {
+        x.copy(chunk, chunkBytesRead)
+        chunkBytesRead += x.length
+      })
+      stream.on('end', () => resolve(chunk))
+      stream.on('error', e => reject(e))
+    })
+    let chunk
+    try {
+      chunk = await streamPromise
+    } catch (e) {
+      throw new Error(`PB Vision Upload failed to read from file ${e.toString()}`)
+    }
+
+    headers = {
+      'Content-Length': chunk.length,
+      'Content-Range': `bytes ${startIdx}-${endIdx}/${numBytesTotal}`
+    }
+    assert(chunk.length <= numBytesTotal)
+    assert(chunk.length === endIdx - startIdx + 1)
+    resp = await fetch(sessionURI, { method: 'PUT', headers, body: chunk })
+    if (!resp.status >= 400) {
+      throw new Error(`PB Vision Upload failed to upload chunk ${startIdx} (${resp.status}): ${await resp.text()} ${JSON.stringify(resp.headers.raw())}`)
+    }
+    startIdx = endIdx + 1
+  }
+  return true
 }
