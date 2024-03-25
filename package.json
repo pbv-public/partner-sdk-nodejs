@@ -18,5 +18,8 @@
   "dependencies": {
     "node-fetch": "^3.3.2"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "jsdoc": "3.6.4",
+    "tui-jsdoc-template": "^1.2.2"
+  }
 }

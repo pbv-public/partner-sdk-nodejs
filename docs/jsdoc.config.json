@@ -1,0 +1,22 @@
+{
+    "tags": {
+        "allowUnknownTags": true
+    },
+    "templates": {
+        "cleverLinks": false,
+        "monospaceLinks": false,
+        "default": {
+            "outputSourceFiles": true
+        },
+        "useCollapsibles": true,
+        "name": "PB Vision SDK NodeJS Guide"
+    },
+    "opts": {
+        "access": "public,undefined",
+        "encoding": "utf8",
+        "destination": "generated",
+        "template": "../node_modules/tui-jsdoc-template",
+        "recurse": true,
+        "readme": "../README.md"
+    }
+}
