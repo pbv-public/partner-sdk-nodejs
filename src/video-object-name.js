@@ -16,7 +16,7 @@ import crypto from 'node:crypto'
  * @param {string} [opts.fileExt] the video's file extension
  * @param {string} [opts.bucket] the GCS bucket to upload to
  * @returns {string} the signed GCS object filename
- * @public
+ * @protected
  */
 export function makeSignedGoogleCloudStorageVideoObjectName ({
   uploaderUID,
@@ -37,6 +37,7 @@ export function makeSignedGoogleCloudStorageVideoObjectName ({
  *
  * The hash includes all elements of the file's unique path (including the
  * bucket) except for the hash itself.
+ * @private
  */
 function getHash (uploaderUID, signingKey, uploadId, fileExt, bucket) {
   const nameWithEmptyHash = makeObjectNameGivenHash(
@@ -48,6 +49,7 @@ function getHash (uploaderUID, signingKey, uploadId, fileExt, bucket) {
 
 /**
  * Returns the full GCS object name (including hash) for the given parameters.
+ * @private
  */
 function makeObjectName (uploaderUID, signingKey, uploadId, fileExt, bucket) {
   const hash = getHash(uploaderUID, signingKey, uploadId, fileExt, bucket)
@@ -58,6 +60,7 @@ function makeObjectName (uploaderUID, signingKey, uploadId, fileExt, bucket) {
 
 /**
  * Returns the full GCS object name using the specified hash string.
+ * @private
  */
 function makeObjectNameGivenHash (uploaderUID, uploadId, fileExt, hash) {
   assert(uploaderUID.indexOf('/') === -1)
