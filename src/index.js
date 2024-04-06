@@ -49,7 +49,7 @@ export class PBVision {
   async sendVideoUrlToDownload (videoUrl, userEmails = []) {
     assert(typeof videoUrl === 'string' && videoUrl.startsWith('http'),
       'URL must be a string beginning with http')
-    assert(videoUrl.endsWith('.mp4'), 'video URL must have the .mp4 extension')
+    assert(videoUrl.split('?')[0].endsWith('.mp4'), 'video URL must have the .mp4 extension')
     this.__callAPI('add_video_by_url', { url: videoUrl, userEmails })
   }
 
