@@ -76,8 +76,14 @@ Next, tell us to download and work on the video. You can do this using our SDK:
 import { PBVision } from '@pbvision/partner-sdk'
 
 const pbv = new PBVision(YOUR_API_KEY)
-const userEmails = [] // optional!
-await pbv.sendVideoUrlToDownload(YOUR_VIDEO_URL, userEmails)
+// you can omit this metadata, or provide some or all of this object-- whatever you'd like!
+const optionalMetadata = {
+  userEmails: [],
+  name: 'Dink Championship 2024',
+  desc: 'A longer description, if you want',
+  gameStartEpoch: 1711393200 // when the game was played
+}
+await pbv.sendVideoUrlToDownload(YOUR_VIDEO_URL, optionalMetadata)
 ```
 
 Alternatively, you can just use `curl`:
@@ -98,7 +104,7 @@ You can directly upload your video from a file using the SDK too:
 import { PBVision } from '@pbvision/partner-sdk'
 
 const pbv = new PBVision(YOUR_API_KEY)
-// you can omit this metadata, or provide it-- whatever you'd like!
+// you can omit this metadata, or provide some or all of this object-- whatever you'd like!
 const optionalMetadata = {
   userEmails: [],
   name: 'Dink Championship 2024',

@@ -43,14 +43,15 @@ export class PBVision {
    * processing is complete, your webhook URL will receive a callback.
    *
    * @param {string} videoUrl the publicly available URL of the video
-   * @param {Array<string>} [userEmails] the email addresses of players in
-   *   this video; they'll be notified when the video is done processing
+   * @param {VideoMetadata} [metadata]
    */
-  async sendVideoUrlToDownload (videoUrl, userEmails = []) {
+  async sendVideoUrlToDownload (videoUrl, { userEmails = [], name, desc, gameStartEpoch } = {}) {
     assert(typeof videoUrl === 'string' && videoUrl.startsWith('http'),
       'URL must be a string beginning with http')
     assert(videoUrl.split('?')[0].endsWith('.mp4'), 'video URL must have the .mp4 extension')
-    this.__callAPI('add_video_by_url', { url: videoUrl, userEmails })
+    this.__callAPI(
+      'add_video_by_url',
+      { url: videoUrl, userEmails, name, desc, gameStartEpoch })
   }
 
   async __callAPI (path, body) {
