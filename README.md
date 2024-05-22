@@ -130,6 +130,7 @@ The HTTP POST body will contain JSON which looks like this:
 {
     "from_url": "https://example.com/my-video.mp4",
     "webpage": "https://app.pb.vision/video/xyz",
+    "cutVideo": "https://storage.googleapis.com/pbv-pro/xyz/f50272db-69a8-49ed-9d92-3a4d067af87c/rallies.mp4",
     "events": EVENTS_DATA,
     "insights": INSIGHTS_DATA,
     "error": {
