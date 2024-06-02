@@ -12,6 +12,14 @@ const ENVIRONMENTS = {
       projectId: 'pbv-dev',
       appId: '1:542837591762:web:06f45c0d7a7e62f25aa70b'
     }
+  },
+  prod: {
+    apiServer: 'https://api-2o2klzx4pa-uc.a.run.app',
+    firebaseConfig: {
+      apiKey: 'AIzaSyCzC8mfo38HtkOR-_Y6xb7Pevp72LkrYfc',
+      projectId: 'pbv-prod',
+      appId: '1:439056169365:web:8b76be9c7cb7a2a13f5e9c'
+    }
   }
 }
 
