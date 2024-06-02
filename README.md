@@ -96,6 +96,8 @@ curl -X POST \
      https://api-ko3kowqi6a-uc.a.run.app/partner/add_video_by_url
 ```
 
+To use the production server instead of the test server, change `ko3kowqi6a` to `2o2klzx4pa`.
+
 #### Option 2: Upload your video
 
 You can directly upload your video from a file using the SDK too:
@@ -103,7 +105,7 @@ You can directly upload your video from a file using the SDK too:
 ```javascript
 import { PBVision } from '@pbvision/partner-sdk'
 
-const pbv = new PBVision(YOUR_API_KEY)
+const pbv = new PBVision(YOUR_API_KEY, { useProdServer: false })
 // you can omit this metadata, or provide some or all of this object-- whatever you'd like!
 const optionalMetadata = {
   userEmails: [],
