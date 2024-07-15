@@ -126,7 +126,8 @@ an HTTP POST request to your server. Your server should acknowledge this
 callback with a standard 200 (OK) response. If it does not, we will attempt to
 retry sending this request later (up to some maximum number of attempts).
 
-The HTTP POST body will contain JSON which looks like this:
+The HTTP POST body will contain JSON which looks like this (depending on which
+data is enabled for your API key, only some of these fields may be present):
 
 ```json
 {
