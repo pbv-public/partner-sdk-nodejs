@@ -1,7 +1,7 @@
 # PB Vision Partner Documentation <!-- omit in toc -->
 
 The easiest way to use the PB Vision AI Engine is to simply share a link to
-your video file. Our AI usually works on each video for about an hour for a
+your video file. Our AI usually works on each video for about 30 minutes for a
 standard length game, so we'll notify your servers when the results are ready.
 
 - [Installation](#installation)
@@ -31,8 +31,8 @@ account. We'll send you an API Key.
 4. Initialize the SDK:
 
 ```javascript
-import { PBVision } from '@pbvision/partner-sdk'
-const pbv = new PBVision(YOUR_API_KEY)
+import { PBVision } from '@pbvision/partner-sdk';
+const pbv = new PBVision(YOUR_API_KEY);
 ```
 
 5. Use its methods as described to [send us video URLs](#send-videos) to
@@ -47,10 +47,10 @@ an HTTP POST request to a URL ("webhook") of your choice. You can use our SDK
 to tell our servers where you want us to notify your servers like this:
 
 ```javascript
-import { PBVision } from '@pbvision/partner-sdk'
+import { PBVision } from '@pbvision/partner-sdk';
 
-const pbv = new PBVision(YOUR_API_KEY)
-await pbv.setWebhook(YOUR_WEBHOOK_URL)
+const pbv = new PBVision(YOUR_API_KEY);
+await pbv.setWebhook(YOUR_WEBHOOK_URL);
 ```
 
 Alternatively, you can just use `curl`:
@@ -65,7 +65,7 @@ curl -X POST \
 
 ### Send Videos
 
-#### Option 1: PBV Downloads your video from a URL
+#### Option 1: PBV downloads your video from a URL
 
 First, upload a video to a _publicly_ accessible URL on your server. For best
 results, videos should follow our [guidelines](#video-guidelines).
@@ -73,17 +73,17 @@ results, videos should follow our [guidelines](#video-guidelines).
 Next, tell us to download and work on the video. You can do this using our SDK:
 
 ```javascript
-import { PBVision } from '@pbvision/partner-sdk'
+import { PBVision } from '@pbvision/partner-sdk';
 
-const pbv = new PBVision(YOUR_API_KEY)
-// you can omit this metadata, or provide some or all of this object-- whatever you'd like!
+const pbv = new PBVision(YOUR_API_KEY);
+// you can omit this metadata, or provide some or all of this object—whatever you'd like!
 const optionalMetadata = {
   userEmails: [],
   name: 'Dink Championship 2024',
   desc: 'A longer description, if you want',
-  gameStartEpoch: 1711393200 // when the game was played
-}
-await pbv.sendVideoUrlToDownload(YOUR_VIDEO_URL, optionalMetadata)
+  gameStartEpoch: 1711393200, // when the game was played
+};
+await pbv.sendVideoUrlToDownload(YOUR_VIDEO_URL, optionalMetadata);
 ```
 
 Alternatively, you can just use `curl`:
@@ -103,23 +103,23 @@ To use the production server instead of the test server, change `ko3kowqi6a` to 
 You can directly upload your video from a file using the SDK too:
 
 ```javascript
-import { PBVision } from '@pbvision/partner-sdk'
+import { PBVision } from '@pbvision/partner-sdk';
 
-const pbv = new PBVision(YOUR_API_KEY, { useProdServer: false })
-// you can omit this metadata, or provide some or all of this object-- whatever you'd like!
+const pbv = new PBVision(YOUR_API_KEY, { useProdServer: false });
+// you can omit this metadata, or provide some or all of this object—whatever you'd like!
 const optionalMetadata = {
   userEmails: [],
   name: 'Dink Championship 2024',
   desc: 'A longer description, if you want',
-  gameStartEpoch: 1711393200 // when the game was played
-}
-await pbv.uploadVideo(YOUR_VIDEO_FILENAME, optionalMetadata)
+  gameStartEpoch: 1711393200, // when the game was played
+};
+await pbv.uploadVideo(YOUR_VIDEO_FILENAME, optionalMetadata);
 ```
 
 ## After Video Processing is Done
 
 When our AI is done processing your video, we will email the players in the
-game (_if_ their email addresses were provided).
+game (_if_ their email addresses were provided via `userEmails`).
 
 If you [provided a webhook](#webhook-setup), then we'll send
 an HTTP POST request to your server. Your server should acknowledge this
@@ -132,10 +132,10 @@ data is enabled for your API key, only some of these fields may be present):
 ```json
 {
     "from_url": "https://example.com/my-video.mp4",
-    "webpage": "https://app.pb.vision/video/xyz",
+    "webpage": "https://pb.vision/video/tvgz3pqij0ll",
     "cutVideo": "https://storage.googleapis.com/pbv-pro/xyz/f50272db-69a8-49ed-9d92-3a4d067af87c/rallies.mp4",
-    "events": EVENTS_DATA,
     "insights": INSIGHTS_DATA,
+    "stats": STATS_DATA,
     "error": {
         "reason": "some explanation here..."
     }
@@ -145,29 +145,31 @@ data is enabled for your API key, only some of these fields may be present):
 - `from_url` is the video url you sent us in [step 3](#send-videos)
 - `webpage` is a link to our web app where the stats can be explored
 - `error` is only present if your video could not be processed
-- `events` - describes the pickleball game in detailed, low-level events
-  - Explore the _events_ schema at <https://pbv-public.github.io/events/dev>
-  - Schema changes and diffs are in our [`pbv-public/events` repo](https://github.com/pbv-public/events/blob/dev/CHANGELOG.md)
-- `insights` - a summary of high-level stats about the video
-  - Explore the _insights_ schema at <https://pbv-public.github.io/insights/dev>
+- `insights` describes the pickleball game in a detailed, shot-by-shot format
+  - Explore the _insights_ schema at <https://pbv-public.github.io/insights?s=~insights~game>
   - Schema changes and diffs are in our [`pbv-public/insights` repo](https://github.com/pbv-public/insights/blob/dev/CHANGELOG.md)
+- `stats` various stats about the game for advanced players
+  - Explore the _stats_ schema at <https://pbv-public.github.io/stats?s=~stats~game>
+  - Schema changes and diffs are in our [`pbv-public/stats` repo](https://github.com/pbv-public/stats/blob/dev/CHANGELOG.md)
+- `cutVideo` contains a link to the rally-sliced (dead time removed) .mp4.
 
 ## Video Guidelines
 
 Requirements:
 
-- Video Encoding: **H.264** codec
-- Frame Rate: **30 or 60 FPS**
-- File Extension: `.mp4`
+- Comply with [PB Vision's framing guidelines](https://help.pb.vision/en/help/articles/1108176-video-recording-and-framing-tips)
+- Video Encoding: H.264 codec
+- Frame Rate: 30 or 60 FPS
+- Max Duration: 30 minutes
 
 For best results, we also recommend:
 
-- Follow our [**video framing** guidelines](https://www.pb.vision/video-tips)
+- File Extension: .mp4
 - Audio Encoding: MPEG-4 AAC
 - Resolution: 1080p
-- Max bitrate: 2 Mbps
-- Max file size: 1GB
-- Max duration: 30 minutes
+- Frame Rate: 30 FPS
+- Max Bitrate: 2 Mbps
+- Max File Size: 2GB
 
 ## Reference Guide
 
