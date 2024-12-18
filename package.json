@@ -1,7 +1,7 @@
 {
   "name": "@pbvision/partner-sdk",
   "description": "SDK for interacting with the PB Vision pickleball AI engine.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "license": "MIT",
   "type": "module",
   "engines": {
