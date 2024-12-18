@@ -26,7 +26,7 @@ const ENVIRONMENTS = {
 /** @public */
 export class PBVision {
   constructor (apiKey,  { useProdServer = false } = {}) {
-    assert(apiKey && apiKey.length === 31 && apiKey.indexOf('_') === 10,
+    assert(apiKey && apiKey.indexOf('_') !== -1,
       `invalid API key: ${apiKey}`)
 
     this.apiKey = apiKey
