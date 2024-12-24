@@ -10,7 +10,7 @@ standard length game, so we'll notify your servers when the results are ready.
 - [Using the API](#using-the-api)
   - [Webhook Setup](#webhook-setup)
   - [Send Videos](#send-videos)
-    - [Option 1: PBV Downloads your video from a URL](#option-1-pbv-downloads-your-video-from-a-url)
+    - [Option 1: PBV downloads your video from a URL](#option-1-pbv-downloads-your-video-from-a-url)
     - [Option 2: Upload your video](#option-2-upload-your-video)
 - [After Video Processing is Done](#after-video-processing-is-done)
 - [Video Guidelines](#video-guidelines)
@@ -136,6 +136,8 @@ data is enabled for your API key, only some of these fields may be present):
     "cutVideo": "https://storage.googleapis.com/pbv-pro/xyz/f50272db-69a8-49ed-9d92-3a4d067af87c/rallies.mp4",
     "insights": INSIGHTS_DATA,
     "stats": STATS_DATA,
+    "vid": STRING,
+    "aiEngineVersion": INT,
     "error": {
         "reason": "some explanation here..."
     }
@@ -152,6 +154,10 @@ data is enabled for your API key, only some of these fields may be present):
   - Explore the _stats_ schema at <https://pbv-public.github.io/stats?s=~stats~game>
   - Schema changes and diffs are in our [`pbv-public/stats` repo](https://github.com/pbv-public/stats/blob/dev/CHANGELOG.md)
 - `cutVideo` contains a link to the rally-sliced (dead time removed) .mp4.
+- only included if `insights` is included:
+  - `vid` - the unique ID of the video in our system
+  - `aiEngineVersion` - the version number of our AI used to process the video
+  - Using these two values, you can retrieve the player thumbnail images extracted from the video like: `https://storage.googleapis.com/pbv-pro/${vid}/${aiEngineVersion}/player${playerIndex}-${imageIndex}.jpg` where `playerIndex` is in the range [0, 3] (for doubles games) and `imageIndex` is in the range [0, 7].
 
 ## Video Guidelines
 
