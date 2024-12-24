@@ -48,19 +48,29 @@ export class PBVision {
   }
 
   /**
+   * @typedef {Object} VideoUrlToDownloadResponse
+   * @property {string} vid the ID of the new video
+   * @property {boolean} [hasCredits] if VideoMetadata.userEmails is non-empty,
+   *   this field will be present and indicate whether the first user has any
+   *   credits available
+   */
+
+  /**
    * Tells PB Vision to download the specified video and process it. When
    * processing is complete, your webhook URL will receive a callback.
    *
    * @param {string} videoUrl the publicly available URL of the video
    * @param {VideoMetadata} [metadata]
+   * @returns {VideoUrlToDownloadResponse}
    */
   async sendVideoUrlToDownload (videoUrl, { userEmails = [], name, desc, gameStartEpoch } = {}) {
     assert(typeof videoUrl === 'string' && videoUrl.startsWith('http'),
       'URL must be a string beginning with http')
     assert(videoUrl.split('?')[0].endsWith('.mp4'), 'video URL must have the .mp4 extension')
-    this.__callAPI(
+    const resp = await this.__callAPI(
       'add_video_by_url',
       { url: videoUrl, userEmails, name, desc, gameStartEpoch })
+    return JSON.parse(resp)
   }
 
   async __callAPI (path, body) {
