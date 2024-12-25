@@ -1,7 +1,6 @@
 import assert from 'node:assert'
 import fs from 'node:fs'
 
-import { makeSignedGoogleCloudStorageVideoObjectName } from './video-object-name.js'
 import fetch from 'node-fetch'
 
 const ENVIRONMENTS = {
@@ -26,10 +25,11 @@ const ENVIRONMENTS = {
 /** @public */
 export class PBVision {
   constructor (apiKey,  { useProdServer = false } = {}) {
-    assert(apiKey && apiKey.indexOf('_') !== -1,
-      `invalid API key: ${apiKey}`)
+    const underscoreIndex = apiKey.lastIndexOf('_')
+    assert(apiKey && underscoreIndex !== -1, `invalid API key: ${apiKey}`)
 
     this.apiKey = apiKey
+    this.uid = apiKey.substring(0, underscoreIndex)
     const config = useProdServer ? ENVIRONMENTS.prod : ENVIRONMENTS.test
     this.server = config.apiServer
     this.isDev = config === ENVIRONMENTS.test
@@ -50,9 +50,8 @@ export class PBVision {
   /**
    * @typedef {Object} VideoUrlToDownloadResponse
    * @property {string} vid the ID of the new video
-   * @property {boolean} [hasCredits] if VideoMetadata.userEmails is non-empty,
-   *   this field will be present and indicate whether the first user has any
-   *   credits available
+   * @property {boolean} [hasCredits] for passthrough partners, this field will
+   *   be present and indicate whether the first user has any credits available
    */
 
   /**
@@ -105,34 +104,30 @@ export class PBVision {
 
   /**
    * Upload a video for processing by the AI.
+   *
+   * For passthrough partners, the video is only uploaded if the paying user
+   * has credit(s) available with which the video can be analyzed.
+   *
    * @param {string} mp4Filename
    * @param {VideoMetadata} [metadata]
-   * @returns {string} the full Google Cloud Storage filename which this was
-   *   uploaded to
+   * @returns {VideoUrlToDownloadResponse}
    */
   async uploadVideo (mp4Filename, { userEmails = [], name, desc, gameStartEpoch } = {}) {
-    // get the upload signing key if we didn't get it earlier
-    if (!this.signingKey) {
-      this.signingKey = await this.__callAPI('get_signing_key')
+    const pieces = mp4Filename.split('.')
+    const ext = pieces[pieces.length - 1]
+    const makeVIDResp = await this.__callAPI('make_video_id', { userEmails, name, desc, gameStartEpoch, fileExt: ext })
+    const { hasCredits, vid } = JSON.parse(makeVIDResp)
+    if (hasCredits === false) {
+      return { hasCredits }
     }
-
-    // create a unique, signed upload name
-    const uid = this.apiKey.split('_')[0]
     const bucket = `pbv-uploads${this.isDev ? '-dev' : ''}`
-    const objName = makeSignedGoogleCloudStorageVideoObjectName({
-      uploaderUID: uid,
-      signingKey: this.signingKey,
-      bucket
-    })
-
-    // if given extra information about this video, upload that first
-    if (userEmails.length || name || desc || gameStartEpoch) {
-      const body = { objName, userEmails, name, desc, gameStartEpoch }
-      await this.__callAPI('set_pre_upload_metadata', body)
-    }
-
+    const objName = `${this.uid}/${vid}.${ext}`
     await uploadToGCS(bucket, objName, mp4Filename)
-    return objName
+    const ret = { vid }
+    if (hasCredits !== undefined) {
+      ret.hasCredits = hasCredits
+    }
+    return ret
   }
 }
 

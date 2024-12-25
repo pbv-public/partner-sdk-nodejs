@@ -108,7 +108,7 @@ import { PBVision } from '@pbvision/partner-sdk';
 const pbv = new PBVision(YOUR_API_KEY, { useProdServer: false });
 // you can omit this metadata, or provide some or all of this object—whatever you'd like!
 const optionalMetadata = {
-  userEmails: [],
+  userEmails: [], // passthrough partners must provide at least one email here
   name: 'Dink Championship 2024',
   desc: 'A longer description, if you want',
   gameStartEpoch: 1711393200, // when the game was played
