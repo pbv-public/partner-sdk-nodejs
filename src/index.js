@@ -62,13 +62,13 @@ export class PBVision {
    * @param {VideoMetadata} [metadata]
    * @returns {VideoUrlToDownloadResponse}
    */
-  async sendVideoUrlToDownload (videoUrl, { userEmails = [], name, desc, gameStartEpoch } = {}) {
+  async sendVideoUrlToDownload (videoUrl, { userEmails = [], name, desc, gameStartEpoch, facility, court } = {}) {
     assert(typeof videoUrl === 'string' && videoUrl.startsWith('http'),
       'URL must be a string beginning with http')
     assert(videoUrl.split('?')[0].endsWith('.mp4'), 'video URL must have the .mp4 extension')
     const resp = await this.__callAPI(
       'add_video_by_url',
-      { url: videoUrl, userEmails, name, desc, gameStartEpoch })
+      { url: videoUrl, userEmails, name, desc, gameStartEpoch, facility, court })
     return JSON.parse(resp)
   }
 
@@ -100,6 +100,8 @@ export class PBVision {
    *   time of the game, or if that isn't provided then the time of the upload)
    * @property {string} [desc] a longer description of the game
    * @property {integer} [gameStartEpoch] the epoch at which the game started
+   * @property {string} [facility] the facility where the game was recorded (e.g., "Cool Club #3 - Barcelona")
+   * @property {string} [court] the court where the game was recorded (e.g., "11A")
    */
 
   /**
@@ -112,10 +114,10 @@ export class PBVision {
    * @param {VideoMetadata} [metadata]
    * @returns {VideoUrlToDownloadResponse}
    */
-  async uploadVideo (mp4Filename, { userEmails = [], name, desc, gameStartEpoch } = {}) {
+  async uploadVideo (mp4Filename, { userEmails = [], name, desc, gameStartEpoch, facility, court } = {}) {
     const pieces = mp4Filename.split('.')
     const ext = pieces[pieces.length - 1]
-    const makeVIDResp = await this.__callAPI('make_video_id', { userEmails, name, desc, gameStartEpoch, fileExt: ext })
+    const makeVIDResp = await this.__callAPI('make_video_id', { userEmails, name, desc, gameStartEpoch, facility, court, fileExt: ext })
     const { hasCredits, vid } = JSON.parse(makeVIDResp)
     if (hasCredits === false) {
       return { hasCredits }
