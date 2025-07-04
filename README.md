@@ -134,6 +134,7 @@ data is enabled for your API key, only some of these fields may be present):
     "from_url": "https://example.com/my-video.mp4",
     "webpage": "https://pb.vision/video/tvgz3pqij0ll",
     "cutVideo": "https://storage.googleapis.com/pbv-pro/xyz/f50272db-69a8-49ed-9d92-3a4d067af87c/rallies.mp4",
+    "cv": CV_DATA,
     "insights": INSIGHTS_DATA,
     "stats": STATS_DATA,
     "vid": STRING,
@@ -147,8 +148,9 @@ data is enabled for your API key, only some of these fields may be present):
 - `from_url` is the video url you sent us in [step 3](#send-videos)
 - `webpage` is a link to our web app where the stats can be explored
 - `error` is only present if your video could not be processed
+- `cv` contains low-level frame-by-frame data
 - `insights` describes the pickleball game in a detailed, shot-by-shot format
-  - Explore the _insights_ schema at <https://pbv-public.github.io/insights?s=~insights~game>
+  - Explore the _insights_ schema at <https://pbv-public.github.io/insights>
   - Schema changes and diffs are in our [`pbv-public/insights` repo](https://github.com/pbv-public/insights/blob/dev/CHANGELOG.md)
 - `stats` various stats about the game for advanced players
   - Explore the _stats_ schema at <https://pbv-public.github.io/stats?s=~stats~game>
