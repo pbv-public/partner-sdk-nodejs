@@ -60,7 +60,7 @@ curl -X POST \
      -H 'x-api-key: YOUR_API_KEY' \
      -H 'Content-Type: application/json' \
      -d '{"url": "https://YOUR_WEBHOOK_URL"}' \
-     https://api-ko3kowqi6a-uc.a.run.app/partner/webhook/set
+     https://api-2o2klzx4pa-uc.a.run.app/partner/webhook/set
 ```
 
 ### Send Videos
@@ -93,10 +93,8 @@ curl -X POST \
      -H 'x-api-key: YOUR_API_KEY' \
      -H 'Content-Type: application/json' \
      -d '{"url": "https://YOUR_VIDEO_URL", "userEmails": ["test@example.com"]}' \
-     https://api-ko3kowqi6a-uc.a.run.app/partner/add_video_by_url
+     https://api-2o2klzx4pa-uc.a.run.app/partner/add_video_by_url
 ```
-
-To use the production server instead of the test server, change `ko3kowqi6a` to `2o2klzx4pa`.
 
 #### Option 2: Upload your video
 
