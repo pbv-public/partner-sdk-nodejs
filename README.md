@@ -13,6 +13,7 @@ standard length game, so we'll notify your servers when the results are ready.
     - [Option 1: PBV downloads your video from a URL](#option-1-pbv-downloads-your-video-from-a-url)
     - [Option 2: Upload your video](#option-2-upload-your-video)
 - [After Video Processing is Done](#after-video-processing-is-done)
+  - [Callback Data](#callback-data)
 - [Video Guidelines](#video-guidelines)
 - [Reference Guide](#reference-guide)
 
@@ -21,7 +22,9 @@ standard length game, so we'll notify your servers when the results are ready.
 ### Step 1: Get API Access
 
 Email **[dev@pb.vision](mailto:dev@pb.vision)** to request API access for your
-account. We'll send you an API Key.
+account. Let us know which data you need access to (e.g. insights, stats) which
+is documented below in the [Callback Data](#callback-data) section. We'll send
+you an API Key after discussing your needs more in depth.
 
 ### Step 2: SDK Setup
 
@@ -142,6 +145,8 @@ data is enabled for your API key, only some of these fields may be present):
     }
 }
 ```
+
+### Callback Data
 
 - `from_url` is the video url you sent us in [step 3](#send-videos)
 - `webpage` is a link to our web app where the stats can be explored
