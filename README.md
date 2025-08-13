@@ -12,6 +12,7 @@ standard length game, so we'll notify your servers when the results are ready.
   - [Send Videos](#send-videos)
     - [Option 1: PBV downloads your video from a URL](#option-1-pbv-downloads-your-video-from-a-url)
     - [Option 2: Upload your video](#option-2-upload-your-video)
+  - [Video Editors](#video-editors)
 - [After Video Processing is Done](#after-video-processing-is-done)
   - [Callback Data](#callback-data)
 - [Video Guidelines](#video-guidelines)
@@ -117,10 +118,21 @@ const optionalMetadata = {
 await pbv.uploadVideo(YOUR_VIDEO_FILENAME, optionalMetadata);
 ```
 
+### Video Editors
+
+Editors can tag themselves and friends in the video. They also have access to
+the video even if the video is private (to make uploaded by your partner
+account private by default, please email us).
+
+You can get the current list of editors on a video by using the `getVideoEditors()`
+method. Similarly, the `setVideoEditors()` method can be used to change the
+email addresses which have editor access on your video.
+
 ## After Video Processing is Done
 
 When our AI is done processing your video, we will email the players in the
-game (_if_ their email addresses were provided via `userEmails`).
+game (_if_ their email addresses were provided via `userEmails`). These users
+will be "editors" on the video and be able to tag themselves and their friends.
 
 If you [provided a webhook](#webhook-setup), then we'll send
 an HTTP POST request to your server. Your server should acknowledge this

@@ -48,6 +48,28 @@ export class PBVision {
   }
 
   /**
+   * Gets the email addresses (if any) which have editor access to a video your
+   * partner account uploaded.
+   *
+   * @param {string} vid video id
+   */
+  async getVideoEditors (vid) {
+    return this.__callAPI('video/editors/get', { vid })
+  }
+
+  /**
+   * Sets the email addresses (if any) which have editor access to a video your
+   * partner account uploaded.
+   *
+   * @param {string} vid video id
+   * @param {Array<string>} editorEmails a list of 0 to 4 email addresses to
+   *   allow edit access to the video (replaces any previous editors list).
+   */
+  async setVideoEditors (vid, editorEmails) {
+    return this.__callAPI('video/editors/set', { vid, editorEmails })
+  }
+
+  /**
    * @typedef {Object} VideoUrlToDownloadResponse
    * @property {string} vid the ID of the new video
    * @property {boolean} [hasCredits] for passthrough partners, this field will
