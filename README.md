@@ -22,7 +22,7 @@ standard length game, so we'll notify your servers when the results are ready.
 
 ### Step 1: Get API Access
 
-Email **[dev@pb.vision](mailto:dev@pb.vision)** to request API access for your
+Email **[support@pb.vision](mailto:support@pb.vision)** to request API access for your
 account. Let us know which data you need access to (e.g. insights, stats) which
 is documented below in the [Callback Data](#callback-data) section. We'll send
 you an API Key after discussing your needs more in depth.
@@ -79,7 +79,7 @@ Next, tell us to download and work on the video. You can do this using our SDK:
 ```javascript
 import { PBVision } from '@pbvision/partner-sdk';
 
-const pbv = new PBVision(YOUR_API_KEY);
+const pbv = new PBVision(YOUR_API_KEY, { useProdServer: true });
 // you can omit this metadata, or provide some or all of this object—whatever you'd like!
 const optionalMetadata = {
   userEmails: [],
@@ -107,7 +107,7 @@ You can directly upload your video from a file using the SDK too:
 ```javascript
 import { PBVision } from '@pbvision/partner-sdk';
 
-const pbv = new PBVision(YOUR_API_KEY, { useProdServer: false });
+const pbv = new PBVision(YOUR_API_KEY, { useProdServer: true });
 // you can omit this metadata, or provide some or all of this object—whatever you'd like!
 const optionalMetadata = {
   userEmails: [],
@@ -121,8 +121,8 @@ await pbv.uploadVideo(YOUR_VIDEO_FILENAME, optionalMetadata);
 ### Video Editors
 
 Editors can tag themselves and friends in the video. They also have access to
-the video even if the video is private (to make uploaded by your partner
-account private by default, please email us).
+the video even if the video is private (to make videos uploaded by your partner
+account private by default, please let us know via email).
 
 You can get the current list of editors on a video by using the `getVideoEditors()`
 method. Similarly, the `setVideoEditors()` method can be used to change the
