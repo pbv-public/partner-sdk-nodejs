@@ -140,7 +140,8 @@ export class PBVision {
   async uploadVideo (mp4Filename, { userEmails = [], name, desc, gameStartEpoch, facility, court, fid } = {}) {
     const pieces = mp4Filename.split('.')
     const ext = pieces[pieces.length - 1]
-    const makeVIDResp = await this.__callAPI('make_video_id', { userEmails, name, desc, gameStartEpoch, facility, court, fid, fileExt: ext })
+    const platform = { name: 'api', version: '0.1.12' }
+    const makeVIDResp = await this.__callAPI('make_video_id', { platform, userEmails, name, desc, gameStartEpoch, facility, court, fid, fileExt: ext })
     const { hasCredits, vid } = JSON.parse(makeVIDResp)
     if (hasCredits === false) {
       return { hasCredits }
