@@ -25,7 +25,7 @@ standard length game, so we'll notify your servers when the results are ready.
 Email **[support@pb.vision](mailto:support@pb.vision)** to request API access for your
 account. Let us know which data you need access to (e.g. insights, stats) which
 is documented below in the [Callback Data](#callback-data) section. We'll send
-you an API Key after discussing your needs more in depth.
+you an API Key after discussing your needs more in depth and laying out our billing options.
 
 ### Step 2: SDK Setup
 
@@ -82,9 +82,8 @@ import { PBVision } from '@pbvision/partner-sdk';
 const pbv = new PBVision(YOUR_API_KEY, { useProdServer: true });
 // you can omit this metadata, or provide some or all of this object—whatever you'd like!
 const optionalMetadata = {
-  userEmails: [],
-  name: 'Dink Championship 2024',
-  desc: 'A longer description, if you want',
+  userEmails: [], // these users will have the video in their PB Vision library
+  name: 'Dink Championship 2025',
   gameStartEpoch: 1711393200, // when the game was played
 };
 await pbv.sendVideoUrlToDownload(YOUR_VIDEO_URL, optionalMetadata);
@@ -110,9 +109,8 @@ import { PBVision } from '@pbvision/partner-sdk';
 const pbv = new PBVision(YOUR_API_KEY, { useProdServer: true });
 // you can omit this metadata, or provide some or all of this object—whatever you'd like!
 const optionalMetadata = {
-  userEmails: [],
-  name: 'Dink Championship 2024',
-  desc: 'A longer description, if you want',
+  userEmails: [], // these users will have the video in their PB Vision library
+  name: 'Dink Championship 2025',
   gameStartEpoch: 1711393200, // when the game was played
 };
 await pbv.uploadVideo(YOUR_VIDEO_FILENAME, optionalMetadata);
@@ -145,8 +143,7 @@ data is enabled for your API key, only some of these fields may be present):
 ```json
 {
     "from_url": "https://example.com/my-video.mp4",
-    "webpage": "https://pb.vision/video/tvgz3pqij0ll",
-    "cutVideo": "https://storage.googleapis.com/pbv-pro/xyz/f50272db-69a8-49ed-9d92-3a4d067af87c/rallies.mp4",
+    "webpage": "https://pb.vision/video/83gyqyc10y8f",
     "cv": CV_DATA,
     "insights": INSIGHTS_DATA,
     "stats": STATS_DATA,
@@ -170,7 +167,6 @@ data is enabled for your API key, only some of these fields may be present):
 - `stats` various stats about the game for advanced players
   - Explore the _stats_ schema at <https://pbv-public.github.io/stats?s=~stats~game>
   - Schema changes and diffs are in our [`pbv-public/stats` repo](https://github.com/pbv-public/stats/blob/dev/CHANGELOG.md)
-- `cutVideo` contains a link to the rally-sliced (dead time removed) .mp4.
 - only included if `insights` is included:
   - `vid` - the unique ID of the video in our system
   - `aiEngineVersion` - the version number of our AI used to process the video
@@ -191,7 +187,7 @@ For best results, we also recommend:
 - Audio Encoding: MPEG-4 AAC
 - Resolution: 1080p
 - Frame Rate: 30 FPS
-- Max Bitrate: 2 Mbps
+- Max Bitrate: 4 Mbps
 - Max File Size: 2GB
 
 ## Reference Guide
