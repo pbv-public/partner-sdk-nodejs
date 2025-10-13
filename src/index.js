@@ -62,11 +62,13 @@ export class PBVision {
    * partner account uploaded.
    *
    * @param {string} vid video id
-   * @param {Array<string>} editorEmails a list of 0 to 4 email addresses to
+   * @param {Array<string>} editorEmails a list of 0 to 8 email addresses to
    *   allow edit access to the video (replaces any previous editors list).
+   * @param {Array<string>} viewerEmails a list of 0 to 8 email addresses to
+   *   allow view access to the video (replaces any previous editors list).
    */
-  async setVideoEditors (vid, editorEmails) {
-    return this.__callAPI('video/editors/set', { vid, editorEmails })
+  async setVideoEditors (vid, editorEmails, viewerEmails) {
+    return this.__callAPI('video/editors/set', { vid, editorEmails, viewerEmails })
   }
 
   /**
