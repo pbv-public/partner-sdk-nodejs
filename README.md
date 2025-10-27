@@ -1,5 +1,7 @@
 # PB Vision Partner Documentation <!-- omit in toc -->
 
+For policies, pricing, and partner responsibilities refer to our [API Partner Guide](https://help.pb.vision/en/help/articles/2793895-pb-vision-api-partner-guide).
+
 The easiest way to use the PB Vision AI Engine is to simply share a link to
 your video file. Our AI usually works on each video for about 30 minutes for a
 standard length game, so we'll notify your servers when the results are ready.
@@ -173,6 +175,8 @@ data is enabled for your API key, only some of these fields may be present):
   - Using these two values, you can retrieve the player thumbnail images extracted from the video like: `https://storage.googleapis.com/pbv-pro/${vid}/${aiEngineVersion}/player${playerIndex}-${imageIndex}.jpg` where `playerIndex` is in the range [0, 3] (for doubles games) and `imageIndex` is in the range [0, 7].
 
 ## Video Guidelines
+
+Note: We are now able to split videos into individual games if you'd like to upload more than one game per video. Let us know if this applies to your use case.
 
 Requirements:
 
