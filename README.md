@@ -14,9 +14,12 @@ standard length game, so we'll notify your servers when the results are ready.
   - [Send Videos](#send-videos)
     - [Option 1: PBV downloads your video from a URL](#option-1-pbv-downloads-your-video-from-a-url)
     - [Option 2: Upload your video](#option-2-upload-your-video)
-  - [Video Editors](#video-editors)
+    - [Video Metadata](#video-metadata)
+  - [Video Editors and Viewers](#video-editors-and-viewers)
 - [After Video Processing is Done](#after-video-processing-is-done)
   - [Callback Data](#callback-data)
+  - [Fetching Insights by Video ID](#fetching-insights-by-video-id)
+  - [Player Identification](#player-identification)
 - [Video Guidelines](#video-guidelines)
 - [Reference Guide](#reference-guide)
 
@@ -82,13 +85,12 @@ Next, tell us to download and work on the video. You can do this using our SDK:
 import { PBVision } from '@pbvision/partner-sdk';
 
 const pbv = new PBVision(YOUR_API_KEY, { useProdServer: true });
-// you can omit this metadata, or provide some or all of this object—whatever you'd like!
-const optionalMetadata = {
-  userEmails: [], // these users will have the video in their PB Vision library
+const metadata = {
+  userEmails: ['player1@example.com', 'player2@example.com'],
   name: 'Dink Championship 2025',
-  gameStartEpoch: 1711393200, // when the game was played
+  gameStartEpoch: 1711393200,
 };
-await pbv.sendVideoUrlToDownload(YOUR_VIDEO_URL, optionalMetadata);
+const { vid } = await pbv.sendVideoUrlToDownload(YOUR_VIDEO_URL, metadata);
 ```
 
 Alternatively, you can just use `curl`:
@@ -109,24 +111,58 @@ You can directly upload your video from a file using the SDK too:
 import { PBVision } from '@pbvision/partner-sdk';
 
 const pbv = new PBVision(YOUR_API_KEY, { useProdServer: true });
-// you can omit this metadata, or provide some or all of this object—whatever you'd like!
-const optionalMetadata = {
-  userEmails: [], // these users will have the video in their PB Vision library
-  name: 'Dink Championship 2025',
-  gameStartEpoch: 1711393200, // when the game was played
+const metadata = {
+  userEmails: ['player1@example.com'],
+  name: 'My Game',
+  gameStartEpoch: 1711393200,
 };
-await pbv.uploadVideo(YOUR_VIDEO_FILENAME, optionalMetadata);
+const { vid } = await pbv.uploadVideo(YOUR_VIDEO_FILENAME, metadata);
 ```
 
-### Video Editors
+#### Video Metadata
 
-Editors can tag themselves and friends in the video. They also have access to
-the video even if the video is private (to make videos uploaded by your partner
-account private by default, please let us know via email).
+Both `sendVideoUrlToDownload()` and `uploadVideo()` accept an optional metadata
+object. You can omit it entirely, or provide some or all of these fields:
 
-You can get the current list of editors on a video by using the `getVideoEditors()`
-method. Similarly, the `setVideoEditors()` method can be used to change the
-email addresses which have editor access on your video.
+| Field | Type | Description |
+|-------|------|-------------|
+| `userEmails` | `string[]` | Up to 4 email addresses of players in the game. These users will have the video added to their PB Vision library, become editors on the video, and be notified when processing is complete. |
+| `name` | `string` | Title of the game. Defaults to the game time, or the upload time if no game time is provided. |
+| `desc` | `string` | A longer description of the game. |
+| `gameStartEpoch` | `integer` | Unix timestamp (seconds) of when the game was played. |
+| `facility` | `string` | Name of the facility where the game was recorded, e.g. `"Cool Club #3 - Barcelona"`. Useful for facility and Court Insight integrations. |
+| `court` | `string` | Court identifier where the game was recorded, e.g. `"11A"`. Useful for facility and Court Insight integrations. |
+| `fid` | `integer` | Folder ID. Organizes the video into a specific folder in the uploader's PB Vision library. |
+
+The `facility` and `court` fields are primarily used by facility partners
+running [Court Insight](https://help.pb.vision/en/articles/9341690-court-insight-for-facilities-and-clubs)
+or similar venue-based integrations, where tracking which court a game came from
+is important. League and tournament partners may also find these useful for
+organizing videos by location.
+
+### Video Editors and Viewers
+
+Editors can tag themselves and friends in the video. Viewers have read-only
+access. Both editors and viewers can access the video even if it is private (to
+make videos uploaded by your partner account private by default, please let us
+know via email).
+
+You can get the current list of editors on a video using `getVideoEditors()`.
+Use `setVideoEditors()` to set both editor and viewer access (up to 8 emails
+each). Note that `setVideoEditors()` _replaces_ the existing editors and
+viewers lists entirely.
+
+```javascript
+// Get current editors
+const editors = await pbv.getVideoEditors(vid);
+
+// Set editors and viewers (replaces any previous lists)
+await pbv.setVideoEditors(
+  vid,
+  ['editor1@example.com', 'editor2@example.com'],  // editors
+  ['viewer1@example.com']                           // viewers
+);
+```
 
 ## After Video Processing is Done
 
@@ -172,7 +208,69 @@ data is enabled for your API key, only some of these fields may be present):
 - only included if `insights` is included:
   - `vid` - the unique ID of the video in our system
   - `aiEngineVersion` - the version number of our AI used to process the video
-  - Using these two values, you can retrieve the player thumbnail images extracted from the video like: `https://storage.googleapis.com/pbv-pro/${vid}/${aiEngineVersion}/player${playerIndex}-${imageIndex}.jpg` where `playerIndex` is in the range [0, 3] (for doubles games) and `imageIndex` is in the range [0, 7].
+
+### Fetching Insights by Video ID
+
+If you need to retrieve the insights data outside of the webhook callback (for
+example, to re-fetch data for a previously processed video), you can use a
+simple HTTP GET request with the video ID:
+
+```bash
+curl https://api-2o2klzx4pa-uc.a.run.app/video/VIDEO_ID/insights.json
+```
+
+This returns the same insights JSON that would be delivered via the webhook
+callback. You can call this endpoint as many times as needed.
+
+### Player Identification
+
+PB Vision assigns each detected player an index based on visual detection.
+Players are indexed 0-3 for doubles (0-1 on one team, 2-3 on the other) and
+0 and 2 for singles. These indices are consistent _within_ a single video but
+do not carry over between videos, so "Player 0" in one video is not necessarily
+the same person as "Player 0" in another.
+
+**Player thumbnails** are available after processing. Using the `vid` and
+`aiEngineVersion` from the webhook callback, you can fetch thumbnail images for
+each player:
+
+```
+https://storage.googleapis.com/pbv-pro/{vid}/{aiEngineVersion}/player{playerIndex}-{imageIndex}.jpg
+```
+
+- `playerIndex`: 0-3 for doubles, 0 and 2 for singles
+- `imageIndex`: 0-7 (up to 8 thumbnails per player, captured at different
+  points in the game)
+
+For example, to get thumbnails for all four players in a doubles game:
+
+```
+https://storage.googleapis.com/pbv-pro/83gyqyc10y8f/7/player0-0.jpg
+https://storage.googleapis.com/pbv-pro/83gyqyc10y8f/7/player1-0.jpg
+https://storage.googleapis.com/pbv-pro/83gyqyc10y8f/7/player2-0.jpg
+https://storage.googleapis.com/pbv-pro/83gyqyc10y8f/7/player3-0.jpg
+```
+
+**Mapping players to your system:** If your integration needs to know which
+player is which (e.g. linking game stats to player profiles in your app), you
+have a few options:
+
+1. **Pass player emails at upload time** via the `userEmails` metadata field.
+   If you know which players are in the match, their emails will be associated
+   with the video as editors, and you can match them against your records.
+
+2. **Use thumbnails for manual or automated matching.** After processing, fetch
+   the player thumbnails and either surface them in an admin UI for manual
+   confirmation, or compare them against known player photos programmatically.
+
+3. **Store your own metadata alongside the video ID.** When you upload a video,
+   record the returned `vid` alongside whatever context you have (match ID,
+   player roster, season, week, etc.) in your own system. When the webhook
+   fires, use the `vid` to look up that context and route the results
+   accordingly.
+
+The insights JSON also includes an `avatar_id` for each player, which
+corresponds to the `playerIndex` used in the thumbnail URLs above.
 
 ## Video Guidelines
 
