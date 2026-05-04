@@ -258,10 +258,17 @@ have a few options:
 1. **Pass player emails at upload time** via the `userEmails` metadata field.
    If you know which players are in the match, their emails will be associated
    with the video as editors, and you can match them against your records.
+   Note that providing an email associates the video with that PB Vision
+   account, but it does not automatically identify which of the detected
+   players (`avatar_id`) belongs to that email. That mapping happens on
+   your side using the thumbnails or webpage link below.
 
 2. **Use thumbnails for manual or automated matching.** After processing, fetch
    the player thumbnails and either surface them in an admin UI for manual
    confirmation, or compare them against known player photos programmatically.
+   If thumbnails alone aren't enough, show the PB Vision `webpage` link next
+   to the avatar choices (or embed it in an iframe) so the user can reference
+   the video before selecting themselves.
 
 3. **Store your own metadata alongside the video ID.** When you upload a video,
    record the returned `vid` alongside whatever context you have (match ID,
