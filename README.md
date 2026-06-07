@@ -219,8 +219,22 @@ simple HTTP GET request with the video ID:
 curl https://api-2o2klzx4pa-uc.a.run.app/video/VIDEO_ID/insights.json
 ```
 
-This returns the same insights JSON that would be delivered via the webhook
-callback. You can call this endpoint as many times as needed.
+Webhook callbacks with `include.insights` receive the raw insights JSON from
+storage. This endpoint is a separate convenience endpoint; by default, it
+returns a compact representation of the same session data. Add
+`?format=augmented` for readable field names:
+
+```bash
+curl 'https://api-2o2klzx4pa-uc.a.run.app/video/VIDEO_ID/insights.json?format=augmented'
+```
+
+For multi-game videos, pass the 1-indexed session number:
+
+```bash
+curl 'https://api-2o2klzx4pa-uc.a.run.app/video/VIDEO_ID/insights.json?sessionNum=2&format=augmented'
+```
+
+You can call this endpoint as many times as needed.
 
 ### Player Identification
 
