@@ -86,13 +86,13 @@ export class PBVision {
    * @param {VideoMetadata} [metadata]
    * @returns {VideoUrlToDownloadResponse}
    */
-  async sendVideoUrlToDownload (videoUrl, { userEmails = [], name, desc, gameStartEpoch, facility, court, fid } = {}) {
+  async sendVideoUrlToDownload (videoUrl, { userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playerEmailsForTagging } = {}) {
     assert(typeof videoUrl === 'string' && videoUrl.startsWith('http'),
       'URL must be a string beginning with http')
     assert(videoUrl.split('?')[0].endsWith('.mp4'), 'video URL must have the .mp4 extension')
     const resp = await this.__callAPI(
       'add_video_by_url',
-      { url: videoUrl, userEmails, name, desc, gameStartEpoch, facility, court, fid })
+      { url: videoUrl, userEmails, name, desc, gameStartEpoch, facility, court, fid, playerEmailsForTagging })
     return JSON.parse(resp)
   }
 
@@ -127,7 +127,45 @@ export class PBVision {
    * @property {string} [facility] the facility where the game was recorded (e.g., "Cool Club #3 - Barcelona")
    * @property {string} [court] the court where the game was recorded (e.g., "11A")
    * @property {integer} [fid] the ID of the folder in which this video should be added
+   * @property {PlayerEmailsForTagging} [playerEmailsForTagging] optionally name
+   *   the players by email so they are auto-tagged once processing completes.
+   *   Identify players by their role at the start of the first game. Honored by
+   *   uploadVideo(), sendVideoUrlToDownload(), and makeVideoId().
    */
+
+  /**
+   * Emails of the players, identified by their role at the start of the first
+   * game. Used to auto-tag the players once the video has been processed.
+   * @typedef {Object} PlayerEmailsForTagging
+   * @property {string} serverEmail email of the first server
+   * @property {string} receiverEmail email of the first receiver
+   * @property {string} [serverPartnerEmail] email of the server's partner (omit for singles)
+   * @property {string} [receiverPartnerEmail] email of the receiver's partner (omit for singles)
+   */
+
+  /**
+   * Allocate a new video ID *without* uploading a file yourself. Useful when the
+   * video will be recorded and uploaded by another client — e.g. the PB Vision
+   * mobile app opened via a deeplink. Pass the returned `vid` (and `uid`) to that
+   * client so it uploads to this video instead of allocating a new one.
+   *
+   * @param {VideoMetadata & {fileExt?: string}} [metadata] `fileExt` is the
+   *   extension the video will be uploaded with; defaults to "mp4"
+   * @returns {{vid: string, uid: string, hasCredits: (boolean|undefined)}} the
+   *   new video id, the uid it belongs to, and (for passthrough partners) whether
+   *   the payer has credit available
+   */
+  async makeVideoId ({ fileExt = 'mp4', userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playerEmailsForTagging } = {}) {
+    const platform = { name: 'api', version: '0.1.12' }
+    const resp = await this.__callAPI('make_video_id',
+      { platform, fileExt, userEmails, name, desc, gameStartEpoch, facility, court, fid, playerEmailsForTagging })
+    const { hasCredits, vid } = JSON.parse(resp)
+    const ret = { vid, uid: this.uid }
+    if (hasCredits !== undefined) {
+      ret.hasCredits = hasCredits
+    }
+    return ret
+  }
 
   /**
    * Upload a video for processing by the AI.
@@ -139,12 +177,10 @@ export class PBVision {
    * @param {VideoMetadata} [metadata]
    * @returns {VideoUrlToDownloadResponse}
    */
-  async uploadVideo (mp4Filename, { userEmails = [], name, desc, gameStartEpoch, facility, court, fid } = {}) {
+  async uploadVideo (mp4Filename, metadata = {}) {
     const pieces = mp4Filename.split('.')
     const ext = pieces[pieces.length - 1]
-    const platform = { name: 'api', version: '0.1.12' }
-    const makeVIDResp = await this.__callAPI('make_video_id', { platform, userEmails, name, desc, gameStartEpoch, facility, court, fid, fileExt: ext })
-    const { hasCredits, vid } = JSON.parse(makeVIDResp)
+    const { hasCredits, vid } = await this.makeVideoId({ ...metadata, fileExt: ext })
     if (hasCredits === false) {
       return { hasCredits }
     }
