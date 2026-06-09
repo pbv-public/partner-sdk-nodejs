@@ -1,3 +1,9 @@
 docs/generated
 node_modules
 .DS_STORE
+
+# Local agent/LLM guidance. Keep these out of the public repo.
+AGENTS.md
+CLAUDE.md
+.agents/
+.claude/
