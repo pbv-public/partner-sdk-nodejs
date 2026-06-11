@@ -14,7 +14,9 @@ standard length game, so we'll notify your servers when the results are ready.
   - [Send Videos](#send-videos)
     - [Option 1: PBV downloads your video from a URL](#option-1-pbv-downloads-your-video-from-a-url)
     - [Option 2: Upload your video](#option-2-upload-your-video)
+    - [Option 3: Pre-allocate a video ID (record/upload elsewhere)](#option-3-pre-allocate-a-video-id-recordupload-elsewhere)
     - [Video Metadata](#video-metadata)
+    - [Auto-tagging players](#auto-tagging-players)
   - [Video Editors and Viewers](#video-editors-and-viewers)
 - [After Video Processing is Done](#after-video-processing-is-done)
   - [Callback Data](#callback-data)
@@ -119,6 +121,24 @@ const metadata = {
 const { vid } = await pbv.uploadVideo(YOUR_VIDEO_FILENAME, metadata);
 ```
 
+#### Option 3: Pre-allocate a video ID (record/upload elsewhere)
+
+Use `makeVideoId()` to reserve a video ID **without** uploading a file yourself.
+This is handy when the video will be recorded and uploaded by a different
+client — for example, opening the PB Vision mobile app via a deeplink to record
+straight into this video. Hand the returned `vid` (and `uid`) to that client so
+it uploads to this video instead of allocating a new one.
+
+```javascript
+const { vid, uid, hasCredits } = await pbv.makeVideoId({
+  // same metadata fields as the other upload methods (all optional)
+  name: 'My Game',
+  fileExt: 'mp4', // the extension it will be uploaded as (defaults to "mp4")
+  playerEmailsForTagging: { serverEmail: 'alice@example.com', receiverEmail: 'bob@example.com' }
+});
+// e.g. build a deeplink for the recorder: pbvision://record?vid=<vid>&uid=<uid>
+```
+
 #### Video Metadata
 
 Both `sendVideoUrlToDownload()` and `uploadVideo()` accept an optional metadata
@@ -133,12 +153,35 @@ object. You can omit it entirely, or provide some or all of these fields:
 | `facility` | `string` | Name of the facility where the game was recorded, e.g. `"Cool Club #3 - Barcelona"`. Useful for facility and Court Insight integrations. |
 | `court` | `string` | Court identifier where the game was recorded, e.g. `"11A"`. Useful for facility and Court Insight integrations. |
 | `fid` | `integer` | Folder ID. Organizes the video into a specific folder in the uploader's PB Vision library. |
+| `playerEmailsForTagging` | `object` | Names the players by email so they are **auto-tagged** once processing completes (see [Auto-tagging players](#auto-tagging-players)). Honored by all of `uploadVideo()`, `sendVideoUrlToDownload()`, and `makeVideoId()`. |
 
 The `facility` and `court` fields are primarily used by facility partners
 running [Court Insight](https://help.pb.vision/en/articles/9341690-court-insight-for-facilities-and-clubs)
 or similar venue-based integrations, where tracking which court a game came from
 is important. League and tournament partners may also find these useful for
 organizing videos by location.
+
+#### Auto-tagging players
+
+Provide `playerEmailsForTagging` to have PB Vision tag the players automatically
+once the video is processed (each tagged player is notified, just like a manual
+tag). Identify players by their **role at the start of the first game**; partner
+emails are optional and omitted for singles:
+
+```javascript
+const { vid } = await pbv.uploadVideo(YOUR_VIDEO_FILENAME, {
+  playerEmailsForTagging: {
+    serverEmail: 'alice@example.com',        // the first server
+    receiverEmail: 'bob@example.com',        // the first receiver
+    serverPartnerEmail: 'carol@example.com', // omit for singles
+    receiverPartnerEmail: 'dave@example.com' // omit for singles
+  }
+});
+```
+
+`serverEmail` and `receiverEmail` are required when the object is present and
+must differ (they are on opposite teams). In multi-game videos the same players
+are matched across games automatically.
 
 ### Video Editors and Viewers
 
