@@ -9,6 +9,6 @@ if [ "$GITHUB_SHA" = "" ]; then
 else
     gitHash=$GITHUB_SHA
 fi
-newLine="Generated from <a href=\"https:\\/\\/github.com\\/pb-vision\\/js-schema\\/tree\\/$gitHash\">$gitHash<\\/a><\\/article>"
+newLine="Generated from <a href=\"https:\\/\\/github.com\\/pbv-public\\/partner-sdk-nodejs\\/tree\\/$gitHash\">$gitHash<\\/a><\\/article>"
 cat ./generated/index.html | sed -e "s/[<][/]article[>]/$newLine/g" > tmp
 mv tmp ./generated/index.html
