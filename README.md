@@ -134,7 +134,7 @@ const { vid, uid, hasCredits } = await pbv.makeVideoId({
   // same metadata fields as the other upload methods (all optional)
   name: 'My Game',
   fileExt: 'mp4', // the extension it will be uploaded as (defaults to "mp4")
-  playerEmailsForTagging: { serverEmail: 'alice@example.com', receiverEmail: 'bob@example.com' }
+  playersForTagging: { server: { name: 'Alice', email: 'alice@example.com' }, receiver: { name: 'Bob' } }
 });
 // e.g. build a deeplink for the recorder: pbvision://record?vid=<vid>&uid=<uid>
 ```
@@ -153,7 +153,7 @@ object. You can omit it entirely, or provide some or all of these fields:
 | `facility` | `string` | Name of the facility where the game was recorded, e.g. `"Cool Club #3 - Barcelona"`. Useful for facility and Court Insight integrations. |
 | `court` | `string` | Court identifier where the game was recorded, e.g. `"11A"`. Useful for facility and Court Insight integrations. |
 | `fid` | `integer` | Folder ID. Organizes the video into a specific folder in the uploader's PB Vision library. |
-| `playerEmailsForTagging` | `object` | Names the players by email so they are **auto-tagged** once processing completes (see [Auto-tagging players](#auto-tagging-players)). Honored by all of `uploadVideo()`, `sendVideoUrlToDownload()`, and `makeVideoId()`. |
+| `playersForTagging` | `object` | The players to **auto-tag** once processing completes, each by a name, an email, or both (see [Auto-tagging players](#auto-tagging-players)). Honored by all of `uploadVideo()`, `sendVideoUrlToDownload()`, and `makeVideoId()`. |
 
 The `facility` and `court` fields are primarily used by facility partners
 running [Court Insight](https://help.pb.vision/en/articles/9341690-court-insight-for-facilities-and-clubs)
@@ -163,25 +163,41 @@ organizing videos by location.
 
 #### Auto-tagging players
 
-Provide `playerEmailsForTagging` to have PB Vision tag the players automatically
-once the video is processed (each tagged player is notified, just like a manual
-tag). Identify players by their **role at the start of the first game**; partner
-emails are optional and omitted for singles:
+Provide `playersForTagging` to have PB Vision tag the players automatically
+once the video is processed. Identify each player by their **role at the start
+of the first game**, and give each one a `name`, an `email`, or both:
 
 ```javascript
 const { vid } = await pbv.uploadVideo(YOUR_VIDEO_FILENAME, {
-  playerEmailsForTagging: {
-    serverEmail: 'alice@example.com',        // the first server
-    receiverEmail: 'bob@example.com',        // the first receiver
-    serverPartnerEmail: 'carol@example.com', // omit for singles
-    receiverPartnerEmail: 'dave@example.com' // omit for singles
+  playersForTagging: {
+    server: { name: 'Alice', email: 'alice@example.com' },       // served the first point
+    serverPartner: { name: 'Carol' },                            // omit for singles
+    receiver: { email: 'bob@example.com' },                      // received the first point
+    receiverPartner: { name: 'Dave', email: 'dave@example.com' } // omit for singles
   }
 });
 ```
 
-`serverEmail` and `receiverEmail` are required when the object is present and
-must differ (they are on opposite teams). In multi-game videos the same players
-are matched across games automatically.
+To fill in the roles from a match:
+
+- The team that serves first supplies the `server` (its first server) and the
+  `serverPartner`.
+- The other team's first server is the `receiver`: they start on the right and
+  receive the first serve. Their partner is the `receiverPartner`.
+- For singles, omit `serverPartner` and `receiverPartner`.
+
+How each player is tagged depends on what you provide:
+
+- A player with an `email` is emailed that they were tagged. If the email
+  belongs to a PB Vision account, the game is added to that account's library
+  and the account's own name is shown. If not, the `name` you gave is shown,
+  and the game joins their library when they sign up with that email.
+- A player with only a `name` is labeled with that name.
+
+`server` and `receiver` are required when `playersForTagging` is present.
+Names are 1 to 64 characters (after trimming), and each email may be used for
+only one player. In multi-game videos the same players are matched across
+games automatically.
 
 ### Video Editors and Viewers
 

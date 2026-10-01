@@ -93,13 +93,13 @@ export class PBVision {
    * @param {VideoMetadata} [metadata]
    * @returns {VideoUrlToDownloadResponse}
    */
-  async sendVideoUrlToDownload (videoUrl, { userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playerEmailsForTagging } = {}) {
+  async sendVideoUrlToDownload (videoUrl, { userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playersForTagging } = {}) {
     assert(typeof videoUrl === 'string' && videoUrl.startsWith('http'),
       'URL must be a string beginning with http')
     assert(videoUrl.split('?')[0].endsWith('.mp4'), 'video URL must have the .mp4 extension')
     const resp = await this.__callAPI(
       'add_video_by_url',
-      { url: videoUrl, userEmails, name, desc, gameStartEpoch, facility, court, fid, playerEmailsForTagging })
+      { url: videoUrl, userEmails, name, desc, gameStartEpoch, facility, court, fid, playersForTagging })
     return JSON.parse(resp)
   }
 
@@ -134,20 +134,37 @@ export class PBVision {
    * @property {string} [facility] the facility where the game was recorded (e.g., "Cool Club #3 - Barcelona")
    * @property {string} [court] the court where the game was recorded (e.g., "11A")
    * @property {integer} [fid] the ID of the folder in which this video should be added
-   * @property {PlayerEmailsForTagging} [playerEmailsForTagging] optionally name
-   *   the players by email so they are auto-tagged once processing completes.
-   *   Identify players by their role at the start of the first game. Honored by
-   *   uploadVideo(), sendVideoUrlToDownload(), and makeVideoId().
+   * @property {PlayersForTagging} [playersForTagging] the players to tag
+   *   automatically once processing completes, each by a name, an email, or
+   *   both. Identify players by their role at the start of the first game.
+   *   Honored by uploadVideo(), sendVideoUrlToDownload(), and makeVideoId().
    */
 
   /**
-   * Emails of the players, identified by their role at the start of the first
-   * game. Used to auto-tag the players once the video has been processed.
-   * @typedef {Object} PlayerEmailsForTagging
-   * @property {string} serverEmail email of the first server
-   * @property {string} receiverEmail email of the first receiver
-   * @property {string} [serverPartnerEmail] email of the server's partner (omit for singles)
-   * @property {string} [receiverPartnerEmail] email of the receiver's partner (omit for singles)
+   * The players to tag automatically once the video is processed, identified
+   * by their role at the start of the first game. The team that serves first
+   * supplies `server` (its first server) and `serverPartner`. The other team's
+   * first server is `receiver`: they start on the right and receive the first
+   * serve. Their partner is `receiverPartner`. Omit both partners for singles.
+   * Each email may be given for only one player.
+   * @typedef {Object} PlayersForTagging
+   * @property {PlayerForTagging} server the player who served the first point
+   * @property {PlayerForTagging} receiver the player who received the first point
+   * @property {PlayerForTagging} [serverPartner] the server's partner (omit for singles)
+   * @property {PlayerForTagging} [receiverPartner] the receiver's partner (omit for singles)
+   */
+
+  /**
+   * A player to tag, identified by a name, an email, or both. At least one of
+   * the two is required.
+   * @typedef {Object} PlayerForTagging
+   * @property {string} [name] what to call the player: 1 to 64 characters
+   *   after trimming. Shown unless the email belongs to a PB Vision account,
+   *   in which case that account's own name is shown.
+   * @property {string} [email] the player's email address. The player is
+   *   emailed that they were tagged. If the address belongs to a PB Vision
+   *   account, the game is added to that account's library; if not, the game
+   *   joins their library when they sign up with this address.
    */
 
   /**
@@ -162,9 +179,9 @@ export class PBVision {
    *   new video id, the uid it belongs to, and (for passthrough partners) whether
    *   the payer has credit available
    */
-  async makeVideoId ({ fileExt = 'mp4', userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playerEmailsForTagging } = {}) {
+  async makeVideoId ({ fileExt = 'mp4', userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playersForTagging } = {}) {
     const resp = await this.__callAPI('make_video_id',
-      { platform: PLATFORM, fileExt, userEmails, name, desc, gameStartEpoch, facility, court, fid, playerEmailsForTagging })
+      { platform: PLATFORM, fileExt, userEmails, name, desc, gameStartEpoch, facility, court, fid, playersForTagging })
     const { hasCredits, vid } = JSON.parse(resp)
     const ret = { vid, uid: this.uid }
     if (hasCredits !== undefined) {
