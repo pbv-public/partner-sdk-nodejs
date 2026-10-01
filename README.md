@@ -18,6 +18,7 @@ standard length game, so we'll notify your servers when the results are ready.
     - [Video Metadata](#video-metadata)
     - [Auto-tagging players](#auto-tagging-players)
   - [Folders](#folders)
+  - [Recording with the PB Vision app](#recording-with-the-pb-vision-app)
   - [Video Editors and Viewers](#video-editors-and-viewers)
 - [After Video Processing is Done](#after-video-processing-is-done)
   - [Callback Data](#callback-data)
@@ -126,9 +127,13 @@ const { vid } = await pbv.uploadVideo(YOUR_VIDEO_FILENAME, metadata);
 
 Use `makeVideoId()` to reserve a video ID **without** uploading a file yourself.
 This is handy when the video will be recorded and uploaded by a different
-client — for example, opening the PB Vision mobile app via a deeplink to record
-straight into this video. Hand the returned `vid` (and `uid`) to that client so
-it uploads to this video instead of allocating a new one.
+client. Hand the returned `vid` (and `uid`) to that client so it uploads to
+this video instead of allocating a new one.
+
+To have the game recorded with the PB Vision app, use `makeRecordingLink()`
+instead: it reserves the video ID for you and returns a link that opens the
+app's camera to record into it. See
+[Recording with the PB Vision app](#recording-with-the-pb-vision-app).
 
 ```javascript
 const { vid, uid, hasCredits } = await pbv.makeVideoId({
@@ -137,7 +142,6 @@ const { vid, uid, hasCredits } = await pbv.makeVideoId({
   fileExt: 'mp4', // the extension it will be uploaded as (defaults to "mp4")
   playersForTagging: { server: { name: 'Alice', email: 'alice@example.com' }, receiver: { name: 'Bob' } }
 });
-// e.g. build a deeplink for the recorder: pbvision://record?vid=<vid>&uid=<uid>
 ```
 
 If the account paying for the video can't pay for it, `hasCredits` is `false`
@@ -145,19 +149,20 @@ and there is no `vid`. Passthrough partners always get `hasCredits`.
 
 #### Video Metadata
 
-Both `sendVideoUrlToDownload()` and `uploadVideo()` accept an optional metadata
-object. You can omit it entirely, or provide some or all of these fields:
+`sendVideoUrlToDownload()`, `uploadVideo()`, `makeVideoId()`, and
+`makeRecordingLink()` accept an optional metadata object. You can omit it
+entirely, or provide some or all of these fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `userEmails` | `string[]` | Up to 4 email addresses of players in the game. These users will have the video added to their PB Vision library, become editors on the video, and be notified when processing is complete. |
 | `name` | `string` | Title of the game. Defaults to the game time, or the upload time if no game time is provided. |
 | `desc` | `string` | A longer description of the game. |
-| `gameStartEpoch` | `integer` | Unix timestamp (seconds) of when the game was played. |
+| `gameStartEpoch` | `integer` | Unix timestamp (seconds) of when the game was played. Not taken by `makeRecordingLink()`, where the game's time comes from its recording. |
 | `facility` | `string` | Name of the facility where the game was recorded, e.g. `"Cool Club #3 - Barcelona"`. Useful for facility and Court Insight integrations. |
 | `court` | `string` | Court identifier where the game was recorded, e.g. `"11A"`. Useful for facility and Court Insight integrations. |
 | `fid` | `integer` | Folder ID, e.g. from `getOrCreateFolder()` (see [Folders](#folders)). Puts the video in that folder in your partner account's library. A `fid` that isn't one of your folders is refused with a 400 error (`unknown folder`). |
-| `playersForTagging` | `object` | The players to **auto-tag** once processing completes, each by a name, an email, or both (see [Auto-tagging players](#auto-tagging-players)). Honored by all of `uploadVideo()`, `sendVideoUrlToDownload()`, and `makeVideoId()`. |
+| `playersForTagging` | `object` | The players to **auto-tag** once processing completes, each by a name, an email, or both (see [Auto-tagging players](#auto-tagging-players)). Honored by all of `uploadVideo()`, `sendVideoUrlToDownload()`, `makeVideoId()`, and `makeRecordingLink()`. |
 
 The `facility` and `court` fields are primarily used by facility partners
 running [Court Insight](https://help.pb.vision/en/articles/9341690-court-insight-for-facilities-and-clubs)
@@ -244,6 +249,94 @@ or not. `getPublicFolderUrl()` gives you that link:
 const folderUrl = pbv.getPublicFolderUrl(fid);
 // https://pb.vision/library/public/<uid>/<fid>
 ```
+
+### Recording with the PB Vision app
+
+The PB Vision iOS and Android apps can record a game straight into your
+partner account. For each game, `makeRecordingLink()` makes a video with the
+[metadata](#video-metadata) you give it and returns a link. Opening the link on
+a phone takes the PB Vision app straight to its camera, and the recording
+uploads to that video. Anyone can record from the link, whether or not they
+are signed in to PB Vision.
+
+A typical event goes like this:
+
+1. **Create a folder for the event** with `getOrCreateFolder()`, using a name
+   that is unique to the event (see [Folders](#folders)).
+2. **Make a recording link for each game** with `makeRecordingLink()`, putting
+   the game in the event's folder and naming its players so they are
+   [tagged automatically](#auto-tagging-players).
+3. **Share the folder**: make it public with `updateFolder()` and send out the
+   link from `getPublicFolderUrl()`.
+
+```javascript
+import { PBVision } from '@pbvision/partner-sdk';
+
+const pbv = new PBVision(YOUR_API_KEY, { useProdServer: true });
+
+// 1. one folder per event
+const { fid } = await pbv.getOrCreateFolder('Spring Open 2026-04-18');
+
+// 2. one recording link per game
+const { vid, url } = await pbv.makeRecordingLink({
+  name: 'Spring Open, Court 3, Round 1',
+  fid,
+  court: '3',
+  playersForTagging: {
+    server: { name: 'Alice', email: 'alice@example.com' },
+    serverPartner: { name: 'Carol' },
+    receiver: { name: 'Bob', email: 'bob@example.com' },
+    receiverPartner: { name: 'Dave' }
+  }
+});
+// save `vid` with the game in your own records
+// show `url` as a QR code, or send it to whoever is recording the game
+
+// 3. share the event
+await pbv.updateFolder(fid, { public: true });
+const eventUrl = pbv.getPublicFolderUrl(fid);
+```
+
+`makeRecordingLink()` returns the new video's `vid`, your `uid`, and the `url`
+to share. It takes the same metadata as the other methods except
+`gameStartEpoch`: the game's time comes from its recording, and a time given
+in advance would override it, so passing one throws an error. It also throws
+if the account paying for the video can't pay for it (`hasCredits` is
+`false`).
+
+**Camera settings.** By default the link records at 1080p and 30 FPS, and the
+person recording can't change either. Ask for 4K with `resolution: '4k'` or
+60 FPS with `fps: 60`, and let the person recording choose with
+`mayChangeResolution: true` and `mayChangeFPS: true`. A phone that can't record
+what the link asks for steps down to the best quality it supports. The link's
+settings apply regardless of the recorder's own PB Vision subscription, but 4K
+requires your partner account to have 4K enabled; otherwise PB Vision rejects
+the upload.
+
+```javascript
+const { url } = await pbv.makeRecordingLink({
+  fid,
+  resolution: '4k',          // '1080p' (default) or '4k'
+  fps: 60,                   // 30 (default) or 60
+  mayChangeResolution: true, // default false
+  mayChangeFPS: false        // default false
+});
+```
+
+**One recording per link.** Only the first upload to a link's video counts, so
+make a new link for each game.
+
+**Opening the link.** The PB Vision app opens only when the phone itself opens
+the link: when someone taps it (in a text message or an email, for example) or
+scans it as a QR code with the camera, or when your own app hands it to the
+operating system (for example with `UIApplication.shared.open()` on iOS or an
+`ACTION_VIEW` intent on Android). Don't load the link inside a webview or an
+in-app browser, where the app may not open. On a phone without the PB Vision
+app, the link shows a page for installing it.
+
+**Testing.** With the test server (`useProdServer: false`), links start with
+`pbvision://record` instead of `https://pb.vision/record`, and only a
+development build of the PB Vision app can open them.
 
 ### Video Editors and Viewers
 

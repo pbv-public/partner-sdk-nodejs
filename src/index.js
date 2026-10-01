@@ -10,10 +10,17 @@ const PLATFORM = {
     fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
 }
 
+// the camera settings a recording link may ask the PB Vision app for
+const RECORDING_RESOLUTIONS = ['1080p', '4k']
+const RECORDING_FPS = [30, 60]
+
 const ENVIRONMENTS = {
   test: {
     apiServer: 'https://api-ko3kowqi6a-uc.a.run.app',
     webApp: 'https://pbv-dev.web.app',
+    // development builds of the PB Vision app can't open https://pb.vision
+    // links, so test links use the app's own scheme
+    recordLink: 'pbvision://record',
     firebaseConfig: {
       apiKey: 'AIzaSyCV1uh4fM7IFopuZOJ306oVWLV3cKLijFc',
       projectId: 'pbv-dev',
@@ -23,6 +30,7 @@ const ENVIRONMENTS = {
   prod: {
     apiServer: 'https://api-2o2klzx4pa-uc.a.run.app',
     webApp: 'https://pb.vision',
+    recordLink: 'https://pb.vision/record',
     firebaseConfig: {
       apiKey: 'AIzaSyCzC8mfo38HtkOR-_Y6xb7Pevp72LkrYfc',
       projectId: 'pbv-prod',
@@ -42,6 +50,7 @@ export class PBVision {
     const config = useProdServer ? ENVIRONMENTS.prod : ENVIRONMENTS.test
     this.server = config.apiServer
     this.webAppUrl = config.webApp
+    this.recordUrl = config.recordLink
     this.isDev = config === ENVIRONMENTS.test
   }
 
@@ -142,7 +151,8 @@ export class PBVision {
    * @property {PlayersForTagging} [playersForTagging] the players to tag
    *   automatically once processing completes, each by a name, an email, or
    *   both. Identify players by their role at the start of the first game.
-   *   Honored by uploadVideo(), sendVideoUrlToDownload(), and makeVideoId().
+   *   Honored by uploadVideo(), sendVideoUrlToDownload(), makeVideoId(), and
+   *   makeRecordingLink().
    */
 
   /**
@@ -174,9 +184,10 @@ export class PBVision {
 
   /**
    * Allocate a new video ID *without* uploading a file yourself. Useful when the
-   * video will be recorded and uploaded by another client — e.g. the PB Vision
-   * mobile app opened via a deeplink. Pass the returned `vid` (and `uid`) to that
-   * client so it uploads to this video instead of allocating a new one.
+   * video will be recorded and uploaded by another client. Pass the returned
+   * `vid` (and `uid`) to that client so it uploads to this video instead of
+   * allocating a new one. To have the game recorded with the PB Vision app,
+   * use makeRecordingLink() instead.
    *
    * @param {VideoMetadata & {fileExt?: string}} [metadata] `fileExt` is the
    *   extension the video will be uploaded with; defaults to "mp4"
@@ -194,6 +205,97 @@ export class PBVision {
       ret.hasCredits = hasCredits
     }
     return ret
+  }
+
+  /**
+   * The video's details and camera settings for makeRecordingLink(). The
+   * details are the same as in VideoMetadata, except that there is no
+   * gameStartEpoch: the game's time comes from its recording.
+   * @typedef {Object} RecordingLinkOptions
+   * @property {Array<string>} [userEmails] the email addresses of up to 4
+   *   players in the game (see VideoMetadata)
+   * @property {string} [name] the title of the game
+   * @property {string} [desc] a longer description of the game
+   * @property {string} [facility] the facility where the game is played
+   * @property {string} [court] the court where the game is played
+   * @property {integer} [fid] the ID of the folder in your partner account's
+   *   library to add the video to (see getOrCreateFolder())
+   * @property {PlayersForTagging} [playersForTagging] the players to tag
+   *   automatically once processing completes
+   * @property {string} [resolution='1080p'] the resolution to record at:
+   *   '1080p' or '4k'. 4K requires your partner account to have 4K enabled;
+   *   otherwise PB Vision rejects the upload.
+   * @property {integer} [fps=30] the frame rate to record at: 30 or 60
+   * @property {boolean} [mayChangeResolution=false] whether the person
+   *   recording may choose a different resolution in the app
+   * @property {boolean} [mayChangeFPS=false] whether the person recording may
+   *   choose a different frame rate in the app
+   */
+
+  /**
+   * @typedef {Object} RecordingLink
+   * @property {string} vid the ID of the video the recording will upload to
+   * @property {string} uid the ID of your partner account, which owns the video
+   * @property {string} url the link that opens the PB Vision app to record the
+   *   game
+   */
+
+  /**
+   * Makes a video for a game and a link that opens the PB Vision app on a
+   * phone straight to its camera, to record the game into that video. Anyone
+   * can record from the link, signed in to PB Vision or not. On a phone
+   * without the app, the link shows a page for installing it.
+   *
+   * By default the app records at 1080p and 30 FPS, and the person recording
+   * can't change either. A phone that can't record what the link asks for
+   * steps down to the best quality it supports. The link's settings apply
+   * regardless of the recorder's own PB Vision subscription, but 4K requires
+   * your partner account to have 4K enabled; otherwise PB Vision rejects the
+   * upload.
+   *
+   * Each link is for one recording: only the first upload to its video
+   * counts, so make a new link for each game.
+   *
+   * Open the link with a real tap (e.g. in a text message, an email, or a
+   * scanned QR code) or by handing it to the phone's operating system, not
+   * inside a webview, so that the phone can open the PB Vision app.
+   *
+   * With the test server (`useProdServer: false`), the link starts with
+   * `pbvision://record` and only a development build of the PB Vision app can
+   * open it.
+   *
+   * @param {RecordingLinkOptions} [options]
+   * @returns {RecordingLink}
+   * @throws {Error} if gameStartEpoch is given, a camera setting is invalid,
+   *   or PB Vision doesn't make the video (e.g. because the account paying for
+   *   it can't pay for it)
+   */
+  async makeRecordingLink ({
+    resolution = '1080p', fps = 30, mayChangeResolution = false, mayChangeFPS = false,
+    gameStartEpoch, userEmails, name, desc, facility, court, fid, playersForTagging
+  } = {}) {
+    assert(gameStartEpoch === undefined,
+      'makeRecordingLink() does not take gameStartEpoch: the game\'s time comes from its recording, and a time set now would override it')
+    assert(RECORDING_RESOLUTIONS.includes(resolution),
+      `resolution must be '1080p' or '4k', not ${JSON.stringify(resolution)}`)
+    assert(RECORDING_FPS.includes(fps), `fps must be 30 or 60, not ${JSON.stringify(fps)}`)
+    assert(typeof mayChangeResolution === 'boolean', 'mayChangeResolution must be a boolean')
+    assert(typeof mayChangeFPS === 'boolean', 'mayChangeFPS must be a boolean')
+
+    const { vid, uid, hasCredits } = await this.makeVideoId({
+      fileExt: 'mp4', userEmails, name, desc, facility, court, fid, playersForTagging })
+    if (hasCredits === false) {
+      throw new Error('PB Vision did not make a video for this recording link: the account paying for it has no credits available (hasCredits is false)')
+    }
+    if (!vid) {
+      throw new Error('PB Vision did not return a video ID for this recording link')
+    }
+    // encodeURIComponent() rather than URLSearchParams, which writes a space
+    // as "+" and not every app reads that back as a space
+    const query = Object.entries({ vid, uid, resolution, fps, mayChangeResolution, mayChangeFPS })
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join('&')
+    return { vid, uid, url: `${this.recordUrl}?${query}` }
   }
 
   /**
