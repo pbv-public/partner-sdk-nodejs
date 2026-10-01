@@ -139,6 +139,9 @@ const { vid, uid, hasCredits } = await pbv.makeVideoId({
 // e.g. build a deeplink for the recorder: pbvision://record?vid=<vid>&uid=<uid>
 ```
 
+If the account paying for the video can't pay for it, `hasCredits` is `false`
+and there is no `vid`. Passthrough partners always get `hasCredits`.
+
 #### Video Metadata
 
 Both `sendVideoUrlToDownload()` and `uploadVideo()` accept an optional metadata

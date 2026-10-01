@@ -175,9 +175,10 @@ export class PBVision {
    *
    * @param {VideoMetadata & {fileExt?: string}} [metadata] `fileExt` is the
    *   extension the video will be uploaded with; defaults to "mp4"
-   * @returns {{vid: string, uid: string, hasCredits: (boolean|undefined)}} the
-   *   new video id, the uid it belongs to, and (for passthrough partners) whether
-   *   the payer has credit available
+   * @returns {{vid: (string|undefined), uid: string, hasCredits: (boolean|undefined)}}
+   *   the new video id and the uid it belongs to. `hasCredits` is false, with
+   *   no `vid`, when the account paying for the video can't pay for it; for
+   *   passthrough partners it is always present.
    */
   async makeVideoId ({ fileExt = 'mp4', userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playersForTagging } = {}) {
     const resp = await this.__callAPI('make_video_id',
@@ -193,8 +194,9 @@ export class PBVision {
   /**
    * Upload a video for processing by the AI.
    *
-   * For passthrough partners, the video is only uploaded if the paying user
-   * has credit(s) available with which the video can be analyzed.
+   * The video is only uploaded if the account paying for it has credit(s)
+   * available with which the video can be analyzed. If not, nothing is
+   * uploaded and this returns `{ hasCredits: false }` with no `vid`.
    *
    * @param {string} mp4Filename
    * @param {VideoMetadata} [metadata]
