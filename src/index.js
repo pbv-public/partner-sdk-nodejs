@@ -3,6 +3,13 @@ import fs from 'node:fs'
 
 import fetch from 'node-fetch'
 
+// sent with each new video so PB Vision knows which version of this SDK made it
+const PLATFORM = {
+  name: 'api',
+  version: JSON.parse(
+    fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
+}
+
 const ENVIRONMENTS = {
   test: {
     apiServer: 'https://api-ko3kowqi6a-uc.a.run.app',
@@ -156,9 +163,8 @@ export class PBVision {
    *   the payer has credit available
    */
   async makeVideoId ({ fileExt = 'mp4', userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playerEmailsForTagging } = {}) {
-    const platform = { name: 'api', version: '0.1.12' }
     const resp = await this.__callAPI('make_video_id',
-      { platform, fileExt, userEmails, name, desc, gameStartEpoch, facility, court, fid, playerEmailsForTagging })
+      { platform: PLATFORM, fileExt, userEmails, name, desc, gameStartEpoch, facility, court, fid, playerEmailsForTagging })
     const { hasCredits, vid } = JSON.parse(resp)
     const ret = { vid, uid: this.uid }
     if (hasCredits !== undefined) {
