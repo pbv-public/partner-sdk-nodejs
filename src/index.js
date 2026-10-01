@@ -189,8 +189,9 @@ export class PBVision {
    * allocating a new one. To have the game recorded with the PB Vision app,
    * use makeRecordingLink() instead.
    *
-   * @param {VideoMetadata & {fileExt?: string}} [metadata] `fileExt` is the
-   *   extension the video will be uploaded with; defaults to "mp4"
+   * @param {VideoMetadata} [metadata] the video's metadata, plus fileExt
+   * @param {string} [metadata.fileExt="mp4"] the extension the video will be
+   *   uploaded with
    * @returns {{vid: (string|undefined), uid: string, hasCredits: (boolean|undefined)}}
    *   the new video id and the uid it belongs to. `hasCredits` is false, with
    *   no `vid`, when the account paying for the video can't pay for it; for
