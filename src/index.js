@@ -13,6 +13,7 @@ const PLATFORM = {
 const ENVIRONMENTS = {
   test: {
     apiServer: 'https://api-ko3kowqi6a-uc.a.run.app',
+    webApp: 'https://pbv-dev.web.app',
     firebaseConfig: {
       apiKey: 'AIzaSyCV1uh4fM7IFopuZOJ306oVWLV3cKLijFc',
       projectId: 'pbv-dev',
@@ -21,6 +22,7 @@ const ENVIRONMENTS = {
   },
   prod: {
     apiServer: 'https://api-2o2klzx4pa-uc.a.run.app',
+    webApp: 'https://pb.vision',
     firebaseConfig: {
       apiKey: 'AIzaSyCzC8mfo38HtkOR-_Y6xb7Pevp72LkrYfc',
       projectId: 'pbv-prod',
@@ -39,6 +41,7 @@ export class PBVision {
     this.uid = apiKey.substring(0, underscoreIndex)
     const config = useProdServer ? ENVIRONMENTS.prod : ENVIRONMENTS.test
     this.server = config.apiServer
+    this.webAppUrl = config.webApp
     this.isDev = config === ENVIRONMENTS.test
   }
 
@@ -133,7 +136,9 @@ export class PBVision {
    * @property {integer} [gameStartEpoch] the epoch at which the game started
    * @property {string} [facility] the facility where the game was recorded (e.g., "Cool Club #3 - Barcelona")
    * @property {string} [court] the court where the game was recorded (e.g., "11A")
-   * @property {integer} [fid] the ID of the folder in which this video should be added
+   * @property {integer} [fid] the ID of the folder in your partner account's
+   *   library to add this video to (see getOrCreateFolder()). A fid that is
+   *   not one of your folders is refused.
    * @property {PlayersForTagging} [playersForTagging] the players to tag
    *   automatically once processing completes, each by a name, an email, or
    *   both. Identify players by their role at the start of the first game.
@@ -217,6 +222,65 @@ export class PBVision {
       ret.hasCredits = hasCredits
     }
     return ret
+  }
+
+  /**
+   * @typedef {Object} GetOrCreateFolderResponse
+   * @property {integer} fid the folder's ID; pass it as the `fid` metadata
+   *   field to put a new video in this folder
+   * @property {boolean} created true if this call created the folder, false if
+   *   it already existed
+   */
+
+  /**
+   * Gets the folder in your partner account's library with exactly this name,
+   * creating it if there is none. Calling it again with the same name returns
+   * the same folder, as long as it hasn't been renamed or moved since, so it
+   * is safe to retry.
+   *
+   * Use a unique name for each event, such as one that includes its date;
+   * otherwise two events with the same name would share one folder.
+   *
+   * @param {string} name the folder's name: 1 to 200 characters, with no
+   *   leading or trailing whitespace
+   * @param {Object} [options]
+   * @param {integer} [options.parent] the ID of the folder to look in, and to
+   *   create the folder in; omit for the top level of your library
+   * @returns {GetOrCreateFolderResponse}
+   */
+  async getOrCreateFolder (name, { parent } = {}) {
+    const resp = await this.__callAPI('folder/get_or_create', { name, parent })
+    const { fid, created } = JSON.parse(resp)
+    return { fid, created }
+  }
+
+  /**
+   * Renames a folder in your partner account's library, moves it, or changes
+   * whether it is public. Fields you omit are left as they are.
+   *
+   * @param {integer} fid the ID of the folder to change
+   * @param {Object} [changes]
+   * @param {string} [changes.name] the folder's new name: 1 to 200 characters,
+   *   with no leading or trailing whitespace
+   * @param {?integer} [changes.parent] the ID of the folder to move it into, or
+   *   null to move it to the top level of your library
+   * @param {boolean} [changes.public] whether anyone with the folder's link may
+   *   view it, signed in or not (see getPublicFolderUrl())
+   */
+  async updateFolder (fid, { name, parent, public: isPublic } = {}) {
+    await this.__callAPI('folder/update', { fid, name, parent, public: isPublic })
+  }
+
+  /**
+   * The link to a folder's page on PB Vision, where anyone can view its videos
+   * once the folder is public (see updateFolder()).
+   *
+   * @param {integer} fid the folder's ID
+   * @returns {string}
+   */
+  getPublicFolderUrl (fid) {
+    assert(Number.isInteger(fid) && fid > 0, `invalid folder ID: ${fid}`)
+    return `${this.webAppUrl}/library/public/${encodeURIComponent(this.uid)}/${fid}`
   }
 }
 

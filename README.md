@@ -17,6 +17,7 @@ standard length game, so we'll notify your servers when the results are ready.
     - [Option 3: Pre-allocate a video ID (record/upload elsewhere)](#option-3-pre-allocate-a-video-id-recordupload-elsewhere)
     - [Video Metadata](#video-metadata)
     - [Auto-tagging players](#auto-tagging-players)
+  - [Folders](#folders)
   - [Video Editors and Viewers](#video-editors-and-viewers)
 - [After Video Processing is Done](#after-video-processing-is-done)
   - [Callback Data](#callback-data)
@@ -155,7 +156,7 @@ object. You can omit it entirely, or provide some or all of these fields:
 | `gameStartEpoch` | `integer` | Unix timestamp (seconds) of when the game was played. |
 | `facility` | `string` | Name of the facility where the game was recorded, e.g. `"Cool Club #3 - Barcelona"`. Useful for facility and Court Insight integrations. |
 | `court` | `string` | Court identifier where the game was recorded, e.g. `"11A"`. Useful for facility and Court Insight integrations. |
-| `fid` | `integer` | Folder ID. Organizes the video into a specific folder in the uploader's PB Vision library. |
+| `fid` | `integer` | Folder ID, e.g. from `getOrCreateFolder()` (see [Folders](#folders)). Puts the video in that folder in your partner account's library. A `fid` that isn't one of your folders is refused with a 400 error (`unknown folder`). |
 | `playersForTagging` | `object` | The players to **auto-tag** once processing completes, each by a name, an email, or both (see [Auto-tagging players](#auto-tagging-players)). Honored by all of `uploadVideo()`, `sendVideoUrlToDownload()`, and `makeVideoId()`. |
 
 The `facility` and `court` fields are primarily used by facility partners
@@ -201,6 +202,48 @@ How each player is tagged depends on what you provide:
 Names are 1 to 64 characters (after trimming), and each email may be used for
 only one player. In multi-game videos the same players are matched across
 games automatically.
+
+### Folders
+
+Folders organize the videos in your partner account's library. To put a new
+video in a folder, pass the folder's ID as the `fid` [metadata](#video-metadata)
+field.
+
+`getOrCreateFolder()` returns the folder in your library with exactly the name
+you give (inside `parent`, if you pass one), creating it if there is none.
+Calling it again with the same name returns the same folder, as long as you
+haven't renamed or moved it since, so it is safe to retry. Use a unique name
+for each event, such as one that includes its date; otherwise two events with
+the same name would share one folder. Names are 1 to 200 characters, with no
+leading or trailing whitespace.
+
+```javascript
+// a folder at the top level of your library
+const { fid, created } = await pbv.getOrCreateFolder('Spring Open 2026-04-18');
+
+// a folder inside it
+const { fid: day1Fid } = await pbv.getOrCreateFolder('Day 1', { parent: fid });
+```
+
+`created` is `true` if the call made the folder, or `false` if it already
+existed.
+
+`updateFolder()` renames a folder, moves it, or makes it public. Fields you
+leave out stay as they are:
+
+```javascript
+await pbv.updateFolder(fid, { name: 'Spring Open 2026' }); // rename it
+await pbv.updateFolder(day1Fid, { parent: null });         // move it to the top level
+await pbv.updateFolder(fid, { public: true });             // let anyone with its link view it
+```
+
+Anyone with a public folder's link can view its videos, signed in to PB Vision
+or not. `getPublicFolderUrl()` gives you that link:
+
+```javascript
+const folderUrl = pbv.getPublicFolderUrl(fid);
+// https://pb.vision/library/public/<uid>/<fid>
+```
 
 ### Video Editors and Viewers
 
