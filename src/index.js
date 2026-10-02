@@ -464,7 +464,7 @@ async function uploadToGCS (bucket, objName, filename) {
     assert(chunk.length <= numBytesTotal)
     assert(chunk.length === endIdx - startIdx + 1)
     resp = await fetch(sessionURI, { method: 'PUT', headers, body: chunk })
-    if (!resp.status >= 400) {
+    if (resp.status >= 400) {
       throw new Error(`PB Vision Upload failed to upload chunk ${startIdx} (${resp.status}): ${await resp.text()} ${JSON.stringify(resp.headers.raw())}`)
     }
     startIdx = endIdx + 1
