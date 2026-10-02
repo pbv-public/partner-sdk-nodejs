@@ -123,6 +123,12 @@ const metadata = {
 const { vid } = await pbv.uploadVideo(YOUR_VIDEO_FILENAME, metadata);
 ```
 
+`uploadVideo()` sends the file in chunks and resumes by itself after a dropped
+connection or a temporary error. If the upload still fails, the error it throws
+has the video's ID as its `vid` property. To retry without making a second
+video for the game, pass a `nonce` that identifies the game (see
+`makeVideoId()`): every call with the same nonce uploads to the same video.
+
 #### Option 3: Pre-allocate a video ID (record/upload elsewhere)
 
 Use `makeVideoId()` to reserve a video ID **without** uploading a file yourself.

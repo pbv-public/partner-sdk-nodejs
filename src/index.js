@@ -334,9 +334,16 @@ export class PBVision {
    * available with which the video can be analyzed. If not, nothing is
    * uploaded and this returns `{ hasCredits: false }` with no `vid`.
    *
+   * The upload resumes by itself after a dropped connection or a temporary
+   * error from the storage service. If it still fails, the error thrown has
+   * the video's ID as its `vid` property. To retry without making a second
+   * video for the game, pass a `nonce` (see makeVideoId()): calling this again
+   * with the same nonce uploads to the same video.
+   *
    * @param {string} mp4Filename
    * @param {VideoMetadata} [metadata]
    * @returns {VideoUrlToDownloadResponse}
+   * @throws {Error} if the upload fails, with the video's ID as `vid`
    */
   async uploadVideo (mp4Filename, metadata = {}) {
     const pieces = mp4Filename.split('.')
@@ -347,7 +354,13 @@ export class PBVision {
     }
     const bucket = `pbv-uploads${this.isDev ? '-dev' : ''}`
     const objName = `${this.uid}/${vid}.${ext}`
-    await uploadToGCS(bucket, objName, mp4Filename)
+    try {
+      await uploadToGCS(bucket, objName, mp4Filename)
+    } catch (e) {
+      const err = new Error(`PB Vision Upload of video ${vid} failed: ${e.message}`, { cause: e })
+      err.vid = vid
+      throw err
+    }
     const ret = { vid }
     if (hasCredits !== undefined) {
       ret.hasCredits = hasCredits
@@ -416,61 +429,176 @@ export class PBVision {
   }
 }
 
+// How uploadToGCS() reads and sends the file: one chunk in memory at a time.
+// GCS needs every chunk but the last to be a multiple of 256 KiB; larger
+// chunks tend to upload faster but take more memory.
+const UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024
+
+// How uploadToGCS() retries a request that fails with a network error or a
+// temporary server error: up to UPLOAD_MAX_RETRIES times in a row without the
+// upload making progress, waiting about twice as long before each retry, up to
+// UPLOAD_MAX_RETRY_DELAY_MS (plus up to a second at random).
+const UPLOAD_MAX_RETRIES = 6
+const UPLOAD_FIRST_RETRY_DELAY_MS = 1000
+const UPLOAD_MAX_RETRY_DELAY_MS = 32000
+
+// Uploads a file to GCS with a resumable upload, following GCS's protocol: a
+// 308 response says how much GCS has stored so far (its Range header), and the
+// upload is only done once GCS answers 200 or 201. After a network error or a
+// temporary server error, it waits, asks GCS how much it has stored, and goes
+// on from there. Throws an Error saying why if the upload fails.
 async function uploadToGCS (bucket, objName, filename) {
-  // request to start a new upload
+  const file = await fs.promises.open(filename, 'r')
+  try {
+    const { size: numBytesTotal } = await file.stat()
+    const sessionURI = await startResumableUpload(bucket, objName, numBytesTotal)
+
+    let offset = 0 // how many bytes GCS has stored
+    let failures = 0 // tries in a row which made no progress
+    let mustAskOffset = false // whether to ask GCS for the offset before sending
+    for (;;) {
+      let request, action
+      if (mustAskOffset) {
+        action = 'checking the upload\'s progress'
+        request = {
+          method: 'PUT',
+          headers: { 'Content-Length': '0', 'Content-Range': `bytes */${numBytesTotal}` }
+        }
+      } else {
+        const endIdx = Math.min(offset + UPLOAD_CHUNK_SIZE, numBytesTotal) - 1
+        action = `uploading bytes ${offset}-${endIdx}`
+        // a file that can't be read is not worth retrying, so this throws
+        const chunk = await readChunk(file, offset, endIdx - offset + 1, numBytesTotal)
+        request = {
+          method: 'PUT',
+          headers: {
+            'Content-Length': String(chunk.length),
+            'Content-Range': `bytes ${offset}-${endIdx}/${numBytesTotal}`
+          },
+          body: chunk
+        }
+      }
+
+      let resp, respBody, problem
+      try {
+        resp = await fetch(sessionURI, request)
+        respBody = await resp.text()
+      } catch (e) {
+        // even a 200 whose body was cut off is confirmed by asking GCS
+        resp = undefined
+        problem = `network error while ${action}: ${e.message}`
+      }
+
+      if (resp && (resp.status === 200 || resp.status === 201)) {
+        return
+      }
+      if (resp?.status === 308) {
+        const stored = parseStoredRange(resp.headers.get('Range'), numBytesTotal)
+        if (stored === numBytesTotal) {
+          throw new Error(`GCS stored all ${numBytesTotal} bytes but did not finish the upload (308)`)
+        }
+        const madeProgress = stored > offset
+        const wasAsking = mustAskOffset
+        problem = `GCS stored nothing more while ${action} (308, offset ${stored})`
+        offset = stored
+        mustAskOffset = false
+        if (madeProgress) {
+          failures = 0
+          continue
+        }
+        if (wasAsking) {
+          continue // the failure that made us ask was already counted
+        }
+        // GCS kept none of the chunk: resend it, after a wait
+      } else if (resp && !isTemporaryStatus(resp.status)) {
+        if (mustAskOffset && (resp.status === 404 || resp.status === 410)) {
+          throw new Error(`the upload session expired (${resp.status}): ${respBody}`)
+        }
+        throw new Error(`GCS answered ${resp.status} while ${action}: ${respBody}`)
+      } else {
+        problem ??= `GCS answered ${resp.status} while ${action}: ${respBody}`
+        mustAskOffset = true
+      }
+
+      failures++
+      if (failures > UPLOAD_MAX_RETRIES) {
+        throw new Error(`gave up after ${UPLOAD_MAX_RETRIES} retries; last error: ${problem}`)
+      }
+      await waitBeforeRetry(failures)
+    }
+  } finally {
+    await file.close()
+  }
+}
+
+// Starts a resumable upload and returns its session URI.
+async function startResumableUpload (bucket, objName, numBytesTotal) {
   const url = `https://storage.googleapis.com/upload/storage/v1/b/${bucket}/o?uploadType=resumable&name=${objName}`
-  const numBytesTotal = fs.statSync(filename).size
-  let headers = { 'X-Upload-Content-Length': numBytesTotal }
-  let resp = await fetch(url, { method: 'POST', headers })
-  if (!resp.ok) {
-    throw new Error(`PB Vision Upload failed to initialize (${resp.status}): ${await resp.text()}`)
-  }
-  const sessionURI = resp.headers.get('Location')
-
-  // determine how much data to read from the file at once; larger tends to
-  // result in faster uploads but also has a bigger memory footprint
-  const minChunkSz = 256 * 1024 // this is the *minimum* size
-  const targetChunkSzMB = 8
-  const chunkSize = Math.max(minChunkSz, targetChunkSzMB * 1024 * 1024)
-
-  // upload one chunk at a time until it is done successfully
-  let startIdx = 0
-  while (startIdx < numBytesTotal) {
-    let endIdx = startIdx + chunkSize - 1
-    endIdx = Math.min(endIdx, numBytesTotal - 1)
-    const thisChunkSize = endIdx - startIdx + 1
-
-    // read just the chunk we need from the file
-    const streamPromise = new Promise((resolve, reject) => {
-      const chunk = Buffer.alloc(thisChunkSize)
-      let chunkBytesRead = 0
-      const stream = fs.createReadStream(
-        filename, { start: startIdx, end: endIdx })
-      stream.on('data', x => {
-        x.copy(chunk, chunkBytesRead)
-        chunkBytesRead += x.length
-      })
-      stream.on('end', () => resolve(chunk))
-      stream.on('error', e => reject(e))
-    })
-    let chunk
+  for (let failures = 0; ; failures++) {
+    let resp, respBody, problem
     try {
-      chunk = await streamPromise
+      resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'X-Upload-Content-Length': String(numBytesTotal) }
+      })
+      respBody = await resp.text()
     } catch (e) {
-      throw new Error(`PB Vision Upload failed to read from file ${e.toString()}`)
+      problem = `network error while initializing: ${e.message}`
     }
-
-    headers = {
-      'Content-Length': chunk.length,
-      'Content-Range': `bytes ${startIdx}-${endIdx}/${numBytesTotal}`
+    if (resp?.ok) {
+      const sessionURI = resp.headers.get('Location')
+      if (!sessionURI) {
+        throw new Error('GCS started the upload but gave no session URI')
+      }
+      return sessionURI
     }
-    assert(chunk.length <= numBytesTotal)
-    assert(chunk.length === endIdx - startIdx + 1)
-    resp = await fetch(sessionURI, { method: 'PUT', headers, body: chunk })
-    if (resp.status >= 400) {
-      throw new Error(`PB Vision Upload failed to upload chunk ${startIdx} (${resp.status}): ${await resp.text()} ${JSON.stringify(resp.headers.raw())}`)
+    if (resp && !isTemporaryStatus(resp.status)) {
+      throw new Error(`failed to initialize (${resp.status}): ${respBody}`)
     }
-    startIdx = endIdx + 1
+    problem ??= `GCS answered ${resp.status} while initializing: ${respBody}`
+    if (failures >= UPLOAD_MAX_RETRIES) {
+      throw new Error(`gave up after ${UPLOAD_MAX_RETRIES} retries; last error: ${problem}`)
+    }
+    await waitBeforeRetry(failures + 1)
   }
-  return true
+}
+
+// GCS asks clients to retry these, with exponential backoff
+function isTemporaryStatus (status) {
+  return status >= 500 || status === 408 || status === 429
+}
+
+async function waitBeforeRetry (retryNumber) {
+  const delayMs = Math.min(
+    UPLOAD_FIRST_RETRY_DELAY_MS * 2 ** (retryNumber - 1), UPLOAD_MAX_RETRY_DELAY_MS)
+  await new Promise(resolve => setTimeout(resolve, delayMs + Math.random() * 1000))
+}
+
+// Returns how many bytes a 308's Range header (e.g. "bytes=0-1048575") says
+// GCS has stored; no Range header means none.
+function parseStoredRange (range, numBytesTotal) {
+  if (range === null) {
+    return 0
+  }
+  const match = /^bytes=0-(\d+)$/.exec(range)
+  const stored = match ? Number(match[1]) + 1 : NaN
+  if (!(stored <= numBytesTotal)) {
+    throw new Error(`GCS sent an unexpected Range header: ${range}`)
+  }
+  return stored
+}
+
+// Reads length bytes of the file, starting at position.
+async function readChunk (file, position, length, numBytesTotal) {
+  const chunk = Buffer.alloc(length)
+  let chunkBytesRead = 0
+  while (chunkBytesRead < length) {
+    const { bytesRead } = await file.read(
+      chunk, chunkBytesRead, length - chunkBytesRead, position + chunkBytesRead)
+    if (bytesRead === 0) {
+      throw new Error(`the file ended at byte ${position + chunkBytesRead}, before the ${numBytesTotal} bytes it had when the upload started`)
+    }
+    chunkBytesRead += bytesRead
+  }
+  return chunk
 }
