@@ -3,11 +3,25 @@ import fs from 'node:fs'
 
 import fetch from 'node-fetch'
 
-// sent with each new video so PB Vision knows which version of this SDK made it
-const PLATFORM = {
-  name: 'api',
-  version: JSON.parse(
-    fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
+// sent with each new video so PB Vision knows which version of this SDK made
+// it. Read lazily and forgivingly: an app bundled with a tool like esbuild may
+// not ship this package's package.json, or may ship its own in its place.
+let platform
+function getPlatform () {
+  if (!platform) {
+    let version = 'unknown'
+    try {
+      const pkg = JSON.parse(
+        fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+      if (pkg.name === '@pbvision/partner-sdk' && pkg.version) {
+        version = pkg.version
+      }
+    } catch {
+      // keep 'unknown'
+    }
+    platform = { name: 'api', version }
+  }
+  return platform
 }
 
 // the camera settings a recording link may ask the PB Vision app for
@@ -206,7 +220,7 @@ export class PBVision {
    */
   async makeVideoId ({ fileExt = 'mp4', userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playersForTagging, nonce } = {}) {
     const resp = await this.__callAPI('make_video_id',
-      { platform: PLATFORM, fileExt, userEmails, name, desc, gameStartEpoch, facility, court, fid, playersForTagging, nonce })
+      { platform: getPlatform(), fileExt, userEmails, name, desc, gameStartEpoch, facility, court, fid, playersForTagging, nonce })
     const { hasCredits, vid } = JSON.parse(resp)
     const ret = { vid, uid: this.uid }
     if (hasCredits !== undefined) {
