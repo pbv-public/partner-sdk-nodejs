@@ -32,8 +32,8 @@ const ENVIRONMENTS = {
   test: {
     apiServer: 'https://api-ko3kowqi6a-uc.a.run.app',
     webApp: 'https://pbv-dev.web.app',
-    // development builds of the PB Vision app can't open https://pb.vision
-    // links, so test links use the app's own scheme
+    // development builds of the PB Vision app can't open https links, so test
+    // links use the app's own scheme, which store builds open too
     recordLink: 'pbvision://record',
     firebaseConfig: {
       apiKey: 'AIzaSyCV1uh4fM7IFopuZOJ306oVWLV3cKLijFc',
@@ -288,8 +288,10 @@ export class PBVision {
    * inside a webview, so that the phone can open the PB Vision app.
    *
    * With the test server (`useProdServer: false`), the link starts with
-   * `pbvision://record` and only a development build of the PB Vision app can
-   * open it.
+   * `pbvision://record`. Any installed PB Vision app opens it, so test with a
+   * development build of the app: the App Store or Google Play app would
+   * upload the recording to production, where the test video doesn't exist,
+   * and the recording would be lost.
    *
    * @param {RecordingLinkOptions} [options]
    * @returns {RecordingLink}
