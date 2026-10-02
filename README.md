@@ -304,6 +304,17 @@ in advance would override it, so passing one throws an error. It also throws
 if the account paying for the video can't pay for it (`hasCredits` is
 `false`).
 
+**One link per game.** If several people may ask for the same game's link (for
+example, any player on the court can tap "Record"), pass a `nonce` that
+identifies the game, such as your own ID for it. Every call with the same nonce
+returns the same video and link, even calls made at the same moment, and the
+first call decides the video's metadata. A call that gets no video because the
+account can't pay doesn't use the nonce up. `makeVideoId()` takes a `nonce` too.
+
+```javascript
+const { url } = await pbv.makeRecordingLink({ nonce: `${eventId}-${gameId}`, fid, playersForTagging });
+```
+
 **Camera settings.** By default the link records at 1080p and 30 FPS, and the
 person recording can't change either. Ask for 4K with `resolution: '4k'` or
 60 FPS with `fps: 60`, and let the person recording choose with

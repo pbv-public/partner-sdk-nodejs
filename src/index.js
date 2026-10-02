@@ -192,14 +192,19 @@ export class PBVision {
    * @param {VideoMetadata} [metadata] the video's metadata, plus fileExt
    * @param {string} [metadata.fileExt="mp4"] the extension the video will be
    *   uploaded with
+   * @param {string} [metadata.nonce] 1 to 200 characters you choose, such as
+   *   your own ID for the game. Every call with the same nonce gets the same
+   *   video, even calls made at the same moment; the first call decides its
+   *   metadata. A call that gets no video (`hasCredits` false) doesn't use the
+   *   nonce up.
    * @returns {{vid: (string|undefined), uid: string, hasCredits: (boolean|undefined)}}
    *   the new video id and the uid it belongs to. `hasCredits` is false, with
    *   no `vid`, when the account paying for the video can't pay for it; for
    *   passthrough partners it is always present.
    */
-  async makeVideoId ({ fileExt = 'mp4', userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playersForTagging } = {}) {
+  async makeVideoId ({ fileExt = 'mp4', userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playersForTagging, nonce } = {}) {
     const resp = await this.__callAPI('make_video_id',
-      { platform: PLATFORM, fileExt, userEmails, name, desc, gameStartEpoch, facility, court, fid, playersForTagging })
+      { platform: PLATFORM, fileExt, userEmails, name, desc, gameStartEpoch, facility, court, fid, playersForTagging, nonce })
     const { hasCredits, vid } = JSON.parse(resp)
     const ret = { vid, uid: this.uid }
     if (hasCredits !== undefined) {
@@ -223,6 +228,9 @@ export class PBVision {
    *   library to add the video to (see getOrCreateFolder())
    * @property {PlayersForTagging} [playersForTagging] the players to tag
    *   automatically once processing completes
+   * @property {string} [nonce] identifies the game, e.g. your own ID for it:
+   *   every call with the same nonce returns the same video and link (see
+   *   makeVideoId())
    * @property {string} [resolution='1080p'] the resolution to record at:
    *   '1080p' or '4k'. 4K requires your partner account to have 4K enabled;
    *   otherwise PB Vision rejects the upload.
@@ -255,7 +263,9 @@ export class PBVision {
    * upload.
    *
    * Each link is for one recording: only the first upload to its video
-   * counts, so make a new link for each game.
+   * counts, so make a new link for each game. If several people may ask for
+   * the same game's link, pass the same `nonce` (e.g. your own ID for the
+   * game) and they all get one video and one link.
    *
    * Open the link with a real tap (e.g. in a text message, an email, or a
    * scanned QR code) or by handing it to the phone's operating system, not
@@ -273,7 +283,7 @@ export class PBVision {
    */
   async makeRecordingLink ({
     resolution = '1080p', fps = 30, mayChangeResolution = false, mayChangeFPS = false,
-    gameStartEpoch, userEmails, name, desc, facility, court, fid, playersForTagging
+    gameStartEpoch, userEmails, name, desc, facility, court, fid, playersForTagging, nonce
   } = {}) {
     assert(gameStartEpoch === undefined,
       'makeRecordingLink() does not take gameStartEpoch: the game\'s time comes from its recording, and a time set now would override it')
@@ -284,7 +294,7 @@ export class PBVision {
     assert(typeof mayChangeFPS === 'boolean', 'mayChangeFPS must be a boolean')
 
     const { vid, uid, hasCredits } = await this.makeVideoId({
-      fileExt: 'mp4', userEmails, name, desc, facility, court, fid, playersForTagging })
+      fileExt: 'mp4', userEmails, name, desc, facility, court, fid, playersForTagging, nonce })
     if (hasCredits === false) {
       throw new Error('PB Vision did not make a video for this recording link: the account paying for it has no credits available (hasCredits is false)')
     }
