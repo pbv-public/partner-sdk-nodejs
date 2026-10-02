@@ -240,10 +240,14 @@ leave out stay as they are:
 await pbv.updateFolder(fid, { name: 'Spring Open 2026' }); // rename it
 await pbv.updateFolder(day1Fid, { parent: null });         // move it to the top level
 await pbv.updateFolder(fid, { public: true });             // let anyone with its link view it
+await pbv.updateFolder(day1Fid, { public: true });         // and include Day 1 when it's viewed
 ```
 
 Anyone with a public folder's link can view its videos, signed in to PB Vision
-or not. `getPublicFolderUrl()` gives you that link:
+or not. A folder inside it is only included if it is public too, so make each
+folder you want shared public (the folders PB Vision makes to hold the games of
+a multi-game video follow their parent). `getPublicFolderUrl()` gives you the
+link:
 
 ```javascript
 const folderUrl = pbv.getPublicFolderUrl(fid);

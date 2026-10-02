@@ -394,7 +394,8 @@ export class PBVision {
    * @param {?integer} [changes.parent] the ID of the folder to move it into, or
    *   null to move it to the top level of your library
    * @param {boolean} [changes.public] whether anyone with the folder's link may
-   *   view it, signed in or not (see getPublicFolderUrl())
+   *   view it, signed in or not (see getPublicFolderUrl()). A folder inside a
+   *   public folder is only shown with it if it is public too.
    */
   async updateFolder (fid, { name, parent, public: isPublic } = {}) {
     await this.__callAPI('folder/update', { fid, name, parent, public: isPublic })
