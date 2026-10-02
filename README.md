@@ -308,8 +308,11 @@ if the account paying for the video can't pay for it (`hasCredits` is
 example, any player on the court can tap "Record"), pass a `nonce` that
 identifies the game, such as your own ID for it. Every call with the same nonce
 returns the same video and link, even calls made at the same moment, and the
-first call decides the video's metadata. A call that gets no video because the
-account can't pay doesn't use the nonce up. `makeVideoId()` takes a `nonce` too.
+first call decides the video's metadata. Until the video is uploaded, each call
+checks that the account paying for it can still pay; a call that can't gets no
+video and throws, and a later call gets the same video once the account can pay.
+`makeVideoId()` takes a `nonce` too (it returns `hasCredits: false` instead of
+throwing).
 
 ```javascript
 const { url } = await pbv.makeRecordingLink({ nonce: `${eventId}-${gameId}`, fid, playersForTagging });

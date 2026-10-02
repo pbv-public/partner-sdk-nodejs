@@ -195,8 +195,10 @@ export class PBVision {
    * @param {string} [metadata.nonce] 1 to 200 characters you choose, such as
    *   your own ID for the game. Every call with the same nonce gets the same
    *   video, even calls made at the same moment; the first call decides its
-   *   metadata. A call that gets no video (`hasCredits` false) doesn't use the
-   *   nonce up.
+   *   metadata. Until the video is uploaded, each call checks that the account
+   *   paying for it can still pay; if not, that call gets no video (`hasCredits`
+   *   false), and a later call gets the same video once it can. A call that
+   *   gets no video doesn't use the nonce up.
    * @returns {{vid: (string|undefined), uid: string, hasCredits: (boolean|undefined)}}
    *   the new video id and the uid it belongs to. `hasCredits` is false, with
    *   no `vid`, when the account paying for the video can't pay for it; for
