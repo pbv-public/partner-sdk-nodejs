@@ -359,10 +359,12 @@ in-app browser, where the app may not open. On a phone without the PB Vision
 app, the link shows a page for installing it.
 
 **Testing.** With the test server (`useProdServer: false`), links start with
-`pbvision://record` instead of `https://pb.vision/record`. Any installed PB
-Vision app opens them, so test on a phone with a development build of the app.
-The App Store or Google Play app would upload the recording to production,
-where the test video doesn't exist, and the recording would be lost.
+`pbvision://record` instead of `https://pb.vision/record` and end with
+`env=test`. Any installed PB Vision app opens them, so test on a phone with a
+development build of the app. Current App Store and Google Play versions check
+the link before recording and say it needs the development build. Older
+versions would record the game and upload it to production, where the test
+video doesn't exist, so the recording would be lost.
 
 ### Video Editors and Viewers
 

@@ -288,10 +288,11 @@ export class PBVision {
    * inside a webview, so that the phone can open the PB Vision app.
    *
    * With the test server (`useProdServer: false`), the link starts with
-   * `pbvision://record`. Any installed PB Vision app opens it, so test with a
-   * development build of the app: the App Store or Google Play app would
-   * upload the recording to production, where the test video doesn't exist,
-   * and the recording would be lost.
+   * `pbvision://record` and ends with `env=test`. Any installed PB Vision app
+   * opens it, so test with a development build of the app. Current App Store
+   * and Google Play versions check the link before recording and say it needs
+   * the development build; older versions would record the game and upload it
+   * to production, where the test video doesn't exist, so it would be lost.
    *
    * @param {RecordingLinkOptions} [options]
    * @returns {RecordingLink}
@@ -319,9 +320,15 @@ export class PBVision {
     if (!vid) {
       throw new Error('PB Vision did not return a video ID for this recording link')
     }
+    // env=test lets the app explain a test-server link it can't record,
+    // instead of recording a game whose video exists only on the test server
+    const params = { vid, uid, resolution, fps, mayChangeResolution, mayChangeFPS }
+    if (this.isDev) {
+      params.env = 'test'
+    }
     // encodeURIComponent() rather than URLSearchParams, which writes a space
     // as "+" and not every app reads that back as a space
-    const query = Object.entries({ vid, uid, resolution, fps, mayChangeResolution, mayChangeFPS })
+    const query = Object.entries(params)
       .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
       .join('&')
     return { vid, uid, url: `${this.recordUrl}?${query}` }
