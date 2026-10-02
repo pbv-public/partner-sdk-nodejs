@@ -343,9 +343,15 @@ export class PBVision {
    * @param {string} mp4Filename
    * @param {VideoMetadata} [metadata]
    * @returns {VideoUrlToDownloadResponse}
-   * @throws {Error} if the upload fails, with the video's ID as `vid`
+   * @throws {Error} if the upload fails, with the video's ID as `vid`. A
+   *   missing or empty file is refused before any video is made.
    */
   async uploadVideo (mp4Filename, metadata = {}) {
+    // checked before making the video, so a file that can't be uploaded
+    // doesn't leave a video behind that never gets one
+    const stats = await fs.promises.stat(mp4Filename)
+    assert(stats.isFile(), `cannot upload ${mp4Filename}: it is not a file`)
+    assert(stats.size > 0, `cannot upload ${mp4Filename}: the file is empty`)
     const pieces = mp4Filename.split('.')
     const ext = pieces[pieces.length - 1]
     const { hasCredits, vid } = await this.makeVideoId({ ...metadata, fileExt: ext })
@@ -451,6 +457,9 @@ async function uploadToGCS (bucket, objName, filename) {
   const file = await fs.promises.open(filename, 'r')
   try {
     const { size: numBytesTotal } = await file.stat()
+    if (numBytesTotal === 0) {
+      throw new Error('the file is empty') // it was emptied after it was checked
+    }
     const sessionURI = await startResumableUpload(bucket, objName, numBytesTotal)
 
     let offset = 0 // how many bytes GCS has stored
