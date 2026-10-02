@@ -288,11 +288,7 @@ export class PBVision {
    * inside a webview, so that the phone can open the PB Vision app.
    *
    * With the test server (`useProdServer: false`), the link starts with
-   * `pbvision://record` and ends with `env=test`. Any installed PB Vision app
-   * opens it, so test with a development build of the app. Current App Store
-   * and Google Play versions check the link before recording and say it needs
-   * the development build; older versions would record the game and upload it
-   * to production, where the test video doesn't exist, so it would be lost.
+   * `pbvision://record` and needs a development build of the PB Vision app.
    *
    * @param {RecordingLinkOptions} [options]
    * @returns {RecordingLink}

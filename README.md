@@ -220,24 +220,18 @@ Folders organize the videos in your partner account's library. To put a new
 video in a folder, pass the folder's ID as the `fid` [metadata](#video-metadata)
 field.
 
-`getOrCreateFolder()` returns the folder in your library with exactly the name
-you give (inside `parent`, if you pass one), creating it if there is none.
-Calling it again with the same name returns the same folder, as long as you
-haven't renamed or moved it since, so it is safe to retry. Use a unique name
-for each event, such as one that includes its date; otherwise two events with
-the same name would share one folder. Names are 1 to 200 characters, with no
-leading or trailing whitespace.
+`getOrCreateFolder()` returns the folder with the name you give (inside
+`parent`, if you pass one), creating it if needed, so it's safe to retry. Use a
+unique name for each event, such as one that includes its date. Names are 1 to
+200 characters, with no leading or trailing whitespace.
 
 ```javascript
 // a folder at the top level of your library
-const { fid, created } = await pbv.getOrCreateFolder('Spring Open 2026-04-18');
+const { fid, created } = await pbv.getOrCreateFolder('Spring Open 2026-04-18'); // created: true if new
 
 // a folder inside it
 const { fid: day1Fid } = await pbv.getOrCreateFolder('Day 1', { parent: fid });
 ```
-
-`created` is `true` if the call made the folder, or `false` if it already
-existed.
 
 `updateFolder()` renames a folder, moves it, or makes it public. Fields you
 leave out stay as they are:
@@ -249,11 +243,9 @@ await pbv.updateFolder(fid, { public: true });             // let anyone with it
 await pbv.updateFolder(day1Fid, { public: true });         // and include Day 1 when it's viewed
 ```
 
-Anyone with a public folder's link can view its videos, signed in to PB Vision
-or not. A folder inside it is only included if it is public too, so make each
-folder you want shared public (the folders PB Vision makes to hold the games of
-a multi-game video follow their parent). `getPublicFolderUrl()` gives you the
-link:
+Anyone with a public folder's link can view its videos, signed in or not. A
+folder inside it is included only if it's public too. `getPublicFolderUrl()`
+gives you the link:
 
 ```javascript
 const folderUrl = pbv.getPublicFolderUrl(fid);
@@ -262,12 +254,11 @@ const folderUrl = pbv.getPublicFolderUrl(fid);
 
 ### Recording with the PB Vision app
 
-The PB Vision iOS and Android apps can record a game straight into your
-partner account. For each game, `makeRecordingLink()` makes a video with the
+For each game, `makeRecordingLink()` makes a video with the
 [metadata](#video-metadata) you give it and returns a link. Opening the link on
 a phone takes the PB Vision app straight to its camera, and the recording
-uploads to that video. Anyone can record from the link, whether or not they
-are signed in to PB Vision.
+uploads to that video in your partner account. Anyone can record from the link,
+signed in to PB Vision or not.
 
 A typical event goes like this:
 
@@ -307,22 +298,14 @@ await pbv.updateFolder(fid, { public: true });
 const eventUrl = pbv.getPublicFolderUrl(fid);
 ```
 
-`makeRecordingLink()` returns the new video's `vid`, your `uid`, and the `url`
-to share. It takes the same metadata as the other methods except
-`gameStartEpoch`: the game's time comes from its recording, and a time given
-in advance would override it, so passing one throws an error. It also throws
-if the account paying for the video can't pay for it (`hasCredits` is
-`false`).
+`makeRecordingLink()` returns `{ vid, uid, url }`. It takes the same metadata
+as the other methods except `gameStartEpoch` (the game's time comes from its
+recording). It throws if the account paying for the video can't pay for it.
 
-**One link per game.** If several people may ask for the same game's link (for
-example, any player on the court can tap "Record"), pass a `nonce` that
-identifies the game, such as your own ID for it. Every call with the same nonce
-returns the same video and link, even calls made at the same moment, and the
-first call decides the video's metadata. Until the video is uploaded, each call
-checks that the account paying for it can still pay; a call that can't gets no
-video and throws, and a later call gets the same video once the account can pay.
-`makeVideoId()` takes a `nonce` too (it returns `hasCredits: false` instead of
-throwing).
+**One link per game.** If several people may ask for the same game's link,
+pass a `nonce` that identifies the game, such as your own ID for it. Every call
+with that nonce returns the same video and link, even at the same moment, and
+the first call's metadata is used. `makeVideoId()` takes a `nonce` too.
 
 ```javascript
 const { url } = await pbv.makeRecordingLink({ nonce: `${eventId}-${gameId}`, fid, playersForTagging });
@@ -330,12 +313,10 @@ const { url } = await pbv.makeRecordingLink({ nonce: `${eventId}-${gameId}`, fid
 
 **Camera settings.** By default the link records at 1080p and 30 FPS, and the
 person recording can't change either. Ask for 4K with `resolution: '4k'` or
-60 FPS with `fps: 60`, and let the person recording choose with
-`mayChangeResolution: true` and `mayChangeFPS: true`. A phone that can't record
-what the link asks for steps down to the best quality it supports. The link's
-settings apply regardless of the recorder's own PB Vision subscription, but 4K
-requires your partner account to have 4K enabled; otherwise PB Vision rejects
-the upload.
+60 FPS with `fps: 60`; with `mayChangeResolution: true` or `mayChangeFPS: true`
+the person recording may choose lower settings. Phones step down to what they
+support, and recorders don't need a PB Vision subscription. 4K requires your
+partner account to have 4K enabled.
 
 ```javascript
 const { url } = await pbv.makeRecordingLink({
@@ -347,24 +328,16 @@ const { url } = await pbv.makeRecordingLink({
 });
 ```
 
-**One recording per link.** Only the first upload to a link's video counts, so
-make a new link for each game.
+**One recording per link.** Only the first upload to a link's video counts.
 
-**Opening the link.** The PB Vision app opens only when the phone itself opens
-the link: when someone taps it (in a text message or an email, for example) or
-scans it as a QR code with the camera, or when your own app hands it to the
-operating system (for example with `UIApplication.shared.open()` on iOS or an
-`ACTION_VIEW` intent on Android). Don't load the link inside a webview or an
-in-app browser, where the app may not open. On a phone without the PB Vision
-app, the link shows a page for installing it.
+**Opening the link.** Let the phone open the link: a tap, a scanned QR code,
+or your app handing it to the operating system (`UIApplication.shared.open()`
+on iOS, an `ACTION_VIEW` intent on Android). Don't load it in a webview or an
+in-app browser, where the PB Vision app may not open. Without the app, the link
+shows a page for installing it.
 
-**Testing.** With the test server (`useProdServer: false`), links start with
-`pbvision://record` instead of `https://pb.vision/record` and end with
-`env=test`. Any installed PB Vision app opens them, so test on a phone with a
-development build of the app. Current App Store and Google Play versions check
-the link before recording and say it needs the development build. Older
-versions would record the game and upload it to production, where the test
-video doesn't exist, so the recording would be lost.
+**Testing.** Links from the test server (`useProdServer: false`) start with
+`pbvision://record` and need a development build of the PB Vision app.
 
 ### Video Editors and Viewers
 
