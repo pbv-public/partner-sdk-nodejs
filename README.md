@@ -316,12 +316,15 @@ person recording can't change either. Ask for 4K with `resolution: '4k'` or
 60 FPS with `fps: 60`; with `mayChangeResolution: true` or `mayChangeFPS: true`
 the person recording may choose lower settings. Phones step down to what they
 support, and recorders don't need a PB Vision subscription. 4K requires your
-partner account to have 4K enabled.
+partner account to have 4K enabled, since PB Vision doesn't analyze video above
+1080p without it. `getMyPartnerAccountInfo()` says whether yours does, and
+without it `makeRecordingLink()` refuses `resolution: '4k'`.
 
 ```javascript
+const { is4K } = await pbv.getMyPartnerAccountInfo();
 const { url } = await pbv.makeRecordingLink({
   fid,
-  resolution: '4k',          // '1080p' (default) or '4k'
+  resolution: is4K ? '4k' : '1080p', // '1080p' (default) or '4k'
   fps: 60,                   // 30 (default) or 60
   mayChangeResolution: true, // default false
   mayChangeFPS: false        // default false

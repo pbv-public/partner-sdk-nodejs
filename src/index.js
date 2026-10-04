@@ -69,6 +69,26 @@ export class PBVision {
   }
 
   /**
+   * @typedef {Object} PartnerAccountInfo
+   * @property {boolean} is4K whether your partner account may upload video
+   *   above 1080p. Without 4K, PB Vision does not analyze such a video.
+   */
+
+  /**
+   * Tells you what your partner account may do, e.g. whether to offer 4K.
+   *
+   * @returns {PartnerAccountInfo}
+   */
+  async getMyPartnerAccountInfo () {
+    const resp = await this.__callAPI('about', {})
+    const { is4K } = JSON.parse(resp)
+    if (is4K) {
+      this.__is4K = true
+    }
+    return { is4K }
+  }
+
+  /**
    * Tells PB Vision to make an HTTP POST request your URL after each of your
    * videos is done processing.
    *
@@ -274,9 +294,10 @@ export class PBVision {
    * By default the app records at 1080p and 30 FPS, and the person recording
    * can't change either. A phone that can't record what the link asks for
    * steps down to the best quality it supports. The link's settings apply
-   * regardless of the recorder's own PB Vision subscription, but 4K requires
-   * your partner account to have 4K enabled; otherwise PB Vision rejects the
-   * upload.
+   * regardless of the recorder's own PB Vision subscription. 4K requires your
+   * partner account to have 4K enabled (see getMyPartnerAccountInfo()), so
+   * without it this refuses a 4K link rather than make a video PB Vision
+   * won't analyze.
    *
    * Each link is for one recording: only the first upload to its video
    * counts, so make a new link for each game. If several people may ask for
@@ -293,8 +314,9 @@ export class PBVision {
    * @param {RecordingLinkOptions} [options]
    * @returns {RecordingLink}
    * @throws {Error} if gameStartEpoch is given, a camera setting is invalid,
-   *   or PB Vision doesn't make the video (e.g. because the account paying for
-   *   it can't pay for it)
+   *   4K is asked for and your partner account doesn't have 4K, or PB Vision
+   *   doesn't make the video (e.g. because the account paying for it can't
+   *   pay for it)
    */
   async makeRecordingLink ({
     resolution = '1080p', fps = 30, mayChangeResolution = false, mayChangeFPS = false,
@@ -307,6 +329,13 @@ export class PBVision {
     assert(RECORDING_FPS.includes(fps), `fps must be 30 or 60, not ${JSON.stringify(fps)}`)
     assert(typeof mayChangeResolution === 'boolean', 'mayChangeResolution must be a boolean')
     assert(typeof mayChangeFPS === 'boolean', 'mayChangeFPS must be a boolean')
+
+    // checked before making the video, so a 4K link that PB Vision wouldn't
+    // analyze never gets one; only a yes is remembered, so an account that
+    // gets 4K later can ask for it without a new PBVision
+    if (resolution === '4k' && !this.__is4K && !(await this.getMyPartnerAccountInfo()).is4K) {
+      throw new Error('your partner account does not have 4K enabled, so PB Vision would not analyze a 4K recording; ask for 1080p, or ask PB Vision to enable 4K')
+    }
 
     const { vid, uid, hasCredits } = await this.makeVideoId({
       fileExt: 'mp4', userEmails, name, desc, facility, court, fid, playersForTagging, nonce })
