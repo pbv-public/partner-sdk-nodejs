@@ -19,6 +19,7 @@ standard length game, so we'll notify your servers when the results are ready.
     - [Auto-tagging players](#auto-tagging-players)
   - [Folders](#folders)
   - [Recording with the PB Vision app](#recording-with-the-pb-vision-app)
+  - [Reporting a game's score](#reporting-a-games-score)
   - [Video Editors and Viewers](#video-editors-and-viewers)
 - [After Video Processing is Done](#after-video-processing-is-done)
   - [Callback Data](#callback-data)
@@ -341,6 +342,24 @@ shows a page for installing it.
 
 **Testing.** Links from the test server (`useProdServer: false`) start with
 `pbvision://record` and need a development build of the PB Vision app.
+
+### Reporting a game's score
+
+If you know a game's final score, report it with `setGameScore()` and PB
+Vision shows it with the game. Name each team by its role at the game's first
+serve, as in [`playersForTagging`](#auto-tagging-players): the team that served
+the first point, and the team that received it. Give the video by its `vid` or
+by the `nonce` you made it with.
+
+```javascript
+await pbv.setGameScore({ nonce: `${eventId}-${gameId}`, server: 11, receiver: 7 });
+```
+
+You can report before the video is processed, or even recorded: the game gets
+the score when processing finishes, and the response's `applied` says whether
+it has it yet. Report again to correct a score; the latest report wins. Each
+team's result is its points, or `'won'` or `'lost'` if that is all you know.
+The score is for a video of one game.
 
 ### Video Editors and Viewers
 

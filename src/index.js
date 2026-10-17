@@ -360,6 +360,48 @@ export class PBVision {
   }
 
   /**
+   * One team's result in a game: the points it scored, `'won'` or `'lost'`
+   * when that is all you know, or `null` when you don't know it.
+   *
+   * @typedef {number|'won'|'lost'|null} TeamResult
+   */
+
+  /**
+   * @typedef {Object} SetGameScoreResponse
+   * @property {string} vid the video
+   * @property {boolean} applied whether the game has the score yet; false
+   *   while the video awaits processing, which gives the game the score when
+   *   it finishes
+   */
+
+  /**
+   * Reports the final score of a game you recorded, for a video of one game
+   * that your partner account owns. Name each team by its role at the game's
+   * first serve, as playersForTagging names the players: the team that
+   * served the first point, and the team that received it. You can report
+   * before the video is processed, or even recorded. Report again to correct
+   * it: the latest report wins.
+   *
+   * @param {Object} score
+   * @param {string} [score.vid] the video; give this or nonce
+   * @param {string} [score.nonce] the nonce you made the video with; give
+   *   this or vid
+   * @param {TeamResult} score.server the result of the team that served the
+   *   game's first point
+   * @param {TeamResult} score.receiver the result of the team that received
+   *   it
+   * @returns {SetGameScoreResponse}
+   */
+  async setGameScore ({ vid, nonce, server, receiver }) {
+    assert((vid === undefined) !== (nonce === undefined), 'give either vid or nonce')
+    const isResult = x => x === null || x === 'won' || x === 'lost' || (Number.isInteger(x) && x >= 0)
+    assert(isResult(server) && isResult(receiver),
+      'each team\'s result must be its points, \'won\', \'lost\' or null')
+    const resp = await this.__callAPI('video/score/set', { vid, nonce, server, receiver })
+    return JSON.parse(resp)
+  }
+
+  /**
    * Upload a video for processing by the AI.
    *
    * The video is only uploaded if the account paying for it has credit(s)
