@@ -372,7 +372,7 @@ export class PBVision {
    * @property {boolean} applied whether the game has the score now. While
    *   the video awaits processing, false, and processing gives the game the
    *   score when it finishes. After, false means the game keeps the score it
-   *   has: someone entered it in PB Vision, or the video doesn't show which
+   *   has: someone entered it in PB Vision, or PB Vision couldn't tell which
    *   team served first
    */
 
