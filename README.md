@@ -357,9 +357,11 @@ await pbv.setGameScore({ nonce: `${eventId}-${gameId}`, server: 11, receiver: 7 
 
 You can report before the video is processed, or even recorded: the game gets
 the score when processing finishes, and the response's `applied` says whether
-it has it yet. Report again to correct a score; the latest report wins. Each
-team's result is its points, or `'won'` or `'lost'` if that is all you know.
-The score is for a video of one game.
+it has it yet. Report again to correct a score; the latest report wins. A
+score someone enters in PB Vision itself stands, though: a report never
+replaces it, and `applied` is false. Each team's result is its points, or
+`'won'` or `'lost'` if that is all you know. The score is for a video of one
+game.
 
 ### Video Editors and Viewers
 

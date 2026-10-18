@@ -369,9 +369,11 @@ export class PBVision {
   /**
    * @typedef {Object} SetGameScoreResponse
    * @property {string} vid the video
-   * @property {boolean} applied whether the game has the score yet; false
-   *   while the video awaits processing, which gives the game the score when
-   *   it finishes
+   * @property {boolean} applied whether the game has the score now. While
+   *   the video awaits processing, false, and processing gives the game the
+   *   score when it finishes. After, false means the game keeps the score it
+   *   has: someone entered it in PB Vision, or the video doesn't show which
+   *   team served first
    */
 
   /**
@@ -380,7 +382,8 @@ export class PBVision {
    * first serve, as playersForTagging names the players: the team that
    * served the first point, and the team that received it. You can report
    * before the video is processed, or even recorded. Report again to correct
-   * it: the latest report wins.
+   * it: the latest report wins, though never over a score someone entered in
+   * PB Vision itself.
    *
    * @param {Object} score
    * @param {string} [score.vid] the video; give this or nonce
