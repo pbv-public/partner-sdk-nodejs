@@ -169,6 +169,7 @@ entirely, or provide some or all of these fields:
 | `facility` | `string` | Name of the facility where the game was recorded, e.g. `"Cool Club #3 - Barcelona"`. Useful for facility and Court Insight integrations. |
 | `court` | `string` | Court identifier where the game was recorded, e.g. `"11A"`. Useful for facility and Court Insight integrations. |
 | `fid` | `integer` | Folder ID, e.g. from `getOrCreateFolder()` (see [Folders](#folders)). Puts the video in that folder in your partner account's library. A `fid` that isn't one of your folders is refused with a 400 error (`unknown folder`). |
+| `playersFolderPath` | `string[]` | Where the video goes in the PB Vision library of everyone it's shared with: the folder names from the top of their library down, e.g. `['Mon Oct 19 open play']`. 1 to 5 names, each 1 to 200 characters with no leading or trailing whitespace. Folders they don't have are made for them. |
 | `playersForTagging` | `object` | The players to **auto-tag** once processing completes, each by a name, an email, or both (see [Auto-tagging players](#auto-tagging-players)). Honored by all of `uploadVideo()`, `sendVideoUrlToDownload()`, `makeVideoId()`, and `makeRecordingLink()`. |
 
 The `facility` and `court` fields are primarily used by facility partners
@@ -219,7 +220,8 @@ games automatically.
 
 Folders organize the videos in your partner account's library. To put a new
 video in a folder, pass the folder's ID as the `fid` [metadata](#video-metadata)
-field.
+field. To file it in the libraries of the people it's shared with, pass
+`playersFolderPath`.
 
 `getOrCreateFolder()` returns the folder with the name you give (inside
 `parent`, if you pass one), creating it if needed, so it's safe to retry. Use a

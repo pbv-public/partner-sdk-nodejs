@@ -139,13 +139,14 @@ export class PBVision {
    * @param {VideoMetadata} [metadata]
    * @returns {VideoUrlToDownloadResponse}
    */
-  async sendVideoUrlToDownload (videoUrl, { userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playersForTagging } = {}) {
+  async sendVideoUrlToDownload (videoUrl, { userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playersFolderPath, playersForTagging } = {}) {
     assert(typeof videoUrl === 'string' && videoUrl.startsWith('http'),
       'URL must be a string beginning with http')
     assert(videoUrl.split('?')[0].endsWith('.mp4'), 'video URL must have the .mp4 extension')
+    assertFolderPath(playersFolderPath)
     const resp = await this.__callAPI(
       'add_video_by_url',
-      { url: videoUrl, userEmails, name, desc, gameStartEpoch, facility, court, fid, playersForTagging })
+      { url: videoUrl, userEmails, name, desc, gameStartEpoch, facility, court, fid, playersFolderPath, playersForTagging })
     return JSON.parse(resp)
   }
 
@@ -182,6 +183,12 @@ export class PBVision {
    * @property {integer} [fid] the ID of the folder in your partner account's
    *   library to add this video to (see getOrCreateFolder()). A fid that is
    *   not one of your folders is refused.
+   * @property {Array<string>} [playersFolderPath] where this video goes in
+   *   the PB Vision library of everyone it's shared with: the folder names
+   *   from the top of their library down, e.g. ['Mon Oct 19 open play'] or
+   *   ['Open play', 'Oct 19']. Folders they don't have are made for them.
+   *   1 to 5 names, each 1 to 200 characters with no leading or trailing
+   *   whitespace.
    * @property {PlayersForTagging} [playersForTagging] the players to tag
    *   automatically once processing completes, each by a name, an email, or
    *   both. Identify players by their role at the start of the first game.
@@ -238,9 +245,10 @@ export class PBVision {
    *   no `vid`, when the account paying for the video can't pay for it; for
    *   passthrough partners it is always present.
    */
-  async makeVideoId ({ fileExt = 'mp4', userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playersForTagging, nonce } = {}) {
+  async makeVideoId ({ fileExt = 'mp4', userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playersFolderPath, playersForTagging, nonce } = {}) {
+    assertFolderPath(playersFolderPath)
     const resp = await this.__callAPI('make_video_id',
-      { platform: getPlatform(), fileExt, userEmails, name, desc, gameStartEpoch, facility, court, fid, playersForTagging, nonce })
+      { platform: getPlatform(), fileExt, userEmails, name, desc, gameStartEpoch, facility, court, fid, playersFolderPath, playersForTagging, nonce })
     const { hasCredits, vid } = JSON.parse(resp)
     const ret = { vid, uid: this.uid }
     if (hasCredits !== undefined) {
@@ -262,6 +270,8 @@ export class PBVision {
    * @property {string} [court] the court where the game is played
    * @property {integer} [fid] the ID of the folder in your partner account's
    *   library to add the video to (see getOrCreateFolder())
+   * @property {Array<string>} [playersFolderPath] where the video goes in
+   *   the library of everyone it's shared with (see VideoMetadata)
    * @property {PlayersForTagging} [playersForTagging] the players to tag
    *   automatically once processing completes
    * @property {string} [nonce] identifies the game, e.g. your own ID for it:
@@ -320,7 +330,7 @@ export class PBVision {
    */
   async makeRecordingLink ({
     resolution = '1080p', fps = 30, mayChangeResolution = false, mayChangeFPS = false,
-    gameStartEpoch, userEmails, name, desc, facility, court, fid, playersForTagging, nonce
+    gameStartEpoch, userEmails, name, desc, facility, court, fid, playersFolderPath, playersForTagging, nonce
   } = {}) {
     assert(gameStartEpoch === undefined,
       'makeRecordingLink() does not take gameStartEpoch: the game\'s time comes from its recording, and a time set now would override it')
@@ -329,6 +339,7 @@ export class PBVision {
     assert(RECORDING_FPS.includes(fps), `fps must be 30 or 60, not ${JSON.stringify(fps)}`)
     assert(typeof mayChangeResolution === 'boolean', 'mayChangeResolution must be a boolean')
     assert(typeof mayChangeFPS === 'boolean', 'mayChangeFPS must be a boolean')
+    assertFolderPath(playersFolderPath)
 
     // checked before making the video, so a 4K link that PB Vision wouldn't
     // analyze never gets one; only a yes is remembered, so an account that
@@ -338,7 +349,7 @@ export class PBVision {
     }
 
     const { vid, uid, hasCredits } = await this.makeVideoId({
-      fileExt: 'mp4', userEmails, name, desc, facility, court, fid, playersForTagging, nonce })
+      fileExt: 'mp4', userEmails, name, desc, facility, court, fid, playersFolderPath, playersForTagging, nonce })
     if (hasCredits === false) {
       throw new Error('PB Vision did not make a video for this recording link: the account paying for it has no credits available (hasCredits is false)')
     }
@@ -647,6 +658,12 @@ async function startResumableUpload (bucket, objName, numBytesTotal) {
     }
     await waitBeforeRetry(failures + 1)
   }
+}
+
+// playersFolderPath is a list of folder names, not a single name
+function assertFolderPath (playersFolderPath) {
+  assert(playersFolderPath === undefined || Array.isArray(playersFolderPath),
+    'playersFolderPath must be an array of folder names, e.g. [\'Mon Oct 19 open play\']')
 }
 
 // GCS asks clients to retry these, with exponential backoff
