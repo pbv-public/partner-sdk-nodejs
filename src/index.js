@@ -240,15 +240,21 @@ export class PBVision {
    *   paying for it can still pay; if not, that call gets no video (`hasCredits`
    *   false), and a later call gets the same video once it can. A call that
    *   gets no video doesn't use the nonce up.
+   * @param {string} [metadata.webhookUrl] an https:// URL of yours that we
+   *   POST this video's events to (see "A Webhook for One Video" in the
+   *   README), alongside your account's webhook (setWebhook()). The first
+   *   call with a nonce decides it, as it does the rest of the metadata, so
+   *   a URL that names your game gets the game back with each event.
    * @returns {{vid: (string|undefined), uid: string, hasCredits: (boolean|undefined)}}
    *   the new video id and the uid it belongs to. `hasCredits` is false, with
    *   no `vid`, when the account paying for the video can't pay for it; for
    *   passthrough partners it is always present.
    */
-  async makeVideoId ({ fileExt = 'mp4', userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playersFolderPath, playersForTagging, nonce } = {}) {
+  async makeVideoId ({ fileExt = 'mp4', userEmails = [], name, desc, gameStartEpoch, facility, court, fid, playersFolderPath, playersForTagging, nonce, webhookUrl } = {}) {
     assertFolderPath(playersFolderPath)
+    assertWebhookUrl(webhookUrl)
     const resp = await this.__callAPI('make_video_id',
-      { platform: getPlatform(), fileExt, userEmails, name, desc, gameStartEpoch, facility, court, fid, playersFolderPath, playersForTagging, nonce })
+      { platform: getPlatform(), fileExt, userEmails, name, desc, gameStartEpoch, facility, court, fid, playersFolderPath, playersForTagging, nonce, webhookURL: webhookUrl })
     const { hasCredits, vid } = JSON.parse(resp)
     const ret = { vid, uid: this.uid }
     if (hasCredits !== undefined) {
@@ -277,6 +283,9 @@ export class PBVision {
    * @property {string} [nonce] identifies the game, e.g. your own ID for it:
    *   every call with the same nonce returns the same video and link (see
    *   makeVideoId())
+   * @property {string} [webhookUrl] an https:// URL of yours that we POST
+   *   the video's events to: once its recording is uploaded, and once it is
+   *   processed (see makeVideoId())
    * @property {string} [resolution='1080p'] the resolution to record at:
    *   '1080p' or '4k'. 4K requires your partner account to have 4K enabled;
    *   otherwise PB Vision rejects the upload.
@@ -330,7 +339,7 @@ export class PBVision {
    */
   async makeRecordingLink ({
     resolution = '1080p', fps = 30, mayChangeResolution = false, mayChangeFPS = false,
-    gameStartEpoch, userEmails, name, desc, facility, court, fid, playersFolderPath, playersForTagging, nonce
+    gameStartEpoch, userEmails, name, desc, facility, court, fid, playersFolderPath, playersForTagging, nonce, webhookUrl
   } = {}) {
     assert(gameStartEpoch === undefined,
       'makeRecordingLink() does not take gameStartEpoch: the game\'s time comes from its recording, and a time set now would override it')
@@ -349,7 +358,7 @@ export class PBVision {
     }
 
     const { vid, uid, hasCredits } = await this.makeVideoId({
-      fileExt: 'mp4', userEmails, name, desc, facility, court, fid, playersFolderPath, playersForTagging, nonce })
+      fileExt: 'mp4', userEmails, name, desc, facility, court, fid, playersFolderPath, playersForTagging, nonce, webhookUrl })
     if (hasCredits === false) {
       throw new Error('PB Vision did not make a video for this recording link: the account paying for it has no credits available (hasCredits is false)')
     }
@@ -429,7 +438,8 @@ export class PBVision {
    * with the same nonce uploads to the same video.
    *
    * @param {string} mp4Filename
-   * @param {VideoMetadata} [metadata]
+   * @param {VideoMetadata} [metadata] plus, as makeVideoId() takes them,
+   *   `nonce` and `webhookUrl`
    * @returns {VideoUrlToDownloadResponse}
    * @throws {Error} if the upload fails, with the video's ID as `vid`. A
    *   missing or empty file is refused before any video is made.
@@ -664,6 +674,13 @@ async function startResumableUpload (bucket, objName, numBytesTotal) {
 function assertFolderPath (playersFolderPath) {
   assert(playersFolderPath === undefined || Array.isArray(playersFolderPath),
     'playersFolderPath must be an array of folder names, e.g. [\'Mon Oct 19 open play\']')
+}
+
+// a video's own webhook, like the account's, is told over https
+function assertWebhookUrl (webhookUrl) {
+  const isOk = webhookUrl === undefined ||
+    (typeof webhookUrl === 'string' && webhookUrl.startsWith('https://'))
+  assert(isOk, 'webhookUrl must be a string beginning with https://')
 }
 
 // GCS asks clients to retry these, with exponential backoff

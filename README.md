@@ -11,6 +11,7 @@ standard length game, so we'll notify your servers when the results are ready.
   - [Step 2: SDK Setup](#step-2-sdk-setup)
 - [Using the API](#using-the-api)
   - [Webhook Setup](#webhook-setup)
+  - [A Webhook for One Video](#a-webhook-for-one-video)
   - [Send Videos](#send-videos)
     - [Option 1: PBV downloads your video from a URL](#option-1-pbv-downloads-your-video-from-a-url)
     - [Option 2: Upload your video](#option-2-upload-your-video)
@@ -76,6 +77,27 @@ curl -X POST \
      -d '{"url": "https://YOUR_WEBHOOK_URL"}' \
      https://api-2o2klzx4pa-uc.a.run.app/partner/webhook/set
 ```
+
+### A Webhook for One Video
+
+You can also give each video its own webhook: pass `webhookUrl` to
+`makeVideoId()`, `makeRecordingLink()` or `uploadVideo()`. We POST that
+video's events to it as JSON, in addition to whatever your account's webhook
+is sent:
+
+- `{ "event": "uploaded", "vid": ..., "webpage": ... }` once the video's file
+  is uploaded and we've accepted it, whether or not the account paying for it
+  has the credits to have it processed.
+- `{ "event": "processed", "vid": ..., "webpage": ..., "numSessions": ... }`
+  each time we finish processing it, or with `"error": { "reason": ... }` in
+  place of `numSessions` when processing failed.
+
+The first call that makes a video decides its webhook, as it does the rest of
+its metadata (see `nonce`), so a URL that names your game, e.g.
+`https://example.com/pbv?game=1234`, tells you which game each event is for.
+It must start with `https://`. Neither webhook's request is signed, so check
+that the `vid` is one you expect before you act on it. A post that fails, or
+that your server answers with an error, is retried.
 
 ### Send Videos
 
