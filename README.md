@@ -192,7 +192,7 @@ entirely, or provide some or all of these fields:
 | `court` | `string` | Court identifier where the game was recorded, e.g. `"11A"`. Useful for facility and Court Insight integrations. |
 | `fid` | `integer` | Folder ID, e.g. from `getOrCreateFolder()` (see [Folders](#folders)). Puts the video in that folder in your partner account's library. A `fid` that isn't one of your folders is refused with a 400 error (`unknown folder`). |
 | `playersFolderPath` | `string[]` | Where the video goes in the PB Vision library of everyone it's shared with: the folder names from the top of their library down, e.g. `['Mon Oct 19 open play']`. 1 to 5 names, each 1 to 200 characters with no leading or trailing whitespace. Folders they don't have are made for them. |
-| `playersForTagging` | `object` | The players to **auto-tag** once processing completes, each by a name, an email, or both (see [Auto-tagging players](#auto-tagging-players)). Honored by all of `uploadVideo()`, `sendVideoUrlToDownload()`, `makeVideoId()`, and `makeRecordingLink()`. |
+| `playersForTagging` | `object` | The players to **auto-tag** once processing completes, each by a name, an email, or both, or by their PB Vision uid (see [Auto-tagging players](#auto-tagging-players)). Honored by all of `uploadVideo()`, `sendVideoUrlToDownload()`, `makeVideoId()`, and `makeRecordingLink()`. |
 
 The `facility` and `court` fields are primarily used by facility partners
 running [Court Insight](https://help.pb.vision/en/articles/9341690-court-insight-for-facilities-and-clubs)
@@ -204,7 +204,8 @@ organizing videos by location.
 
 Provide `playersForTagging` to have PB Vision tag the players automatically
 once the video is processed. Identify each player by their **role at the start
-of the first game**, and give each one a `name`, an `email`, or both:
+of the first game**, and give each one a `name`, an `email`, or both, or their
+PB Vision `uid` (with or without a `name`):
 
 ```javascript
 const { vid } = await pbv.uploadVideo(YOUR_VIDEO_FILENAME, {
@@ -231,12 +232,30 @@ How each player is tagged depends on what you provide:
   belongs to a PB Vision account, the game is added to that account's library
   and the account's own name is shown. If not, the `name` you gave is shown,
   and the game joins their library when they sign up with that email.
+- A player with a `uid` is tagged as that PB Vision account, whatever email
+  they sign in with: the game is added to the account's library, they are told
+  they were tagged, and the account's own name is shown (the `name` you gave
+  only if the account has none). A `uid` that isn't a PB Vision account is
+  refused with a 400 error.
 - A player with only a `name` is labeled with that name.
 
 `server` and `receiver` are required when `playersForTagging` is present.
-Names are 1 to 64 characters (after trimming), and each email may be used for
-only one player. In multi-game videos the same players are matched across
-games automatically.
+Names are 1 to 64 characters (after trimming), each email or uid may be used
+for only one player, and a player has a `uid` or an `email`, never both. In
+multi-game videos the same players are matched across games automatically.
+
+A player's `uid` is their PB Vision account ID. You get it when the player
+connects your app to their PB Vision account through Connected Apps (OAuth; see
+[pb.vision/apps](https://pb.vision/apps)): the access token is
+`pbv_pat_<uid>_<32-character secret>`, and `POST /user/profile/get` with that
+token (the `profile:read` scope) returns `{ uid, name }`:
+
+```javascript
+playersForTagging: {
+  server: { name: 'Alice', uid: aliceUID }, // from Alice's Connected Apps link
+  receiver: { name: 'Bob', email: 'bob@example.com' }
+}
+```
 
 ### Folders
 

@@ -191,7 +191,8 @@ export class PBVision {
    *   whitespace.
    * @property {PlayersForTagging} [playersForTagging] the players to tag
    *   automatically once processing completes, each by a name, an email, or
-   *   both. Identify players by their role at the start of the first game.
+   *   both, or by their PB Vision uid. Identify players by their role at the
+   *   start of the first game.
    *   Honored by uploadVideo(), sendVideoUrlToDownload(), makeVideoId(), and
    *   makeRecordingLink().
    */
@@ -202,7 +203,7 @@ export class PBVision {
    * supplies `server` (its first server) and `serverPartner`. The other team's
    * first server is `receiver`: they start on the right and receive the first
    * serve. Their partner is `receiverPartner`. Omit both partners for singles.
-   * Each email may be given for only one player.
+   * Each email or uid may be given for only one player.
    * @typedef {Object} PlayersForTagging
    * @property {PlayerForTagging} server the player who served the first point
    * @property {PlayerForTagging} receiver the player who received the first point
@@ -211,16 +212,18 @@ export class PBVision {
    */
 
   /**
-   * A player to tag, identified by a name, an email, or both. At least one of
-   * the two is required.
+   * A player to tag: at least one of a name, an email and a PB Vision uid,
+   * but never both an email and a uid.
    * @typedef {Object} PlayerForTagging
    * @property {string} [name] what to call the player: 1 to 64 characters
-   *   after trimming. Shown unless the email belongs to a PB Vision account,
-   *   in which case that account's own name is shown.
+   *   after trimming. Shown unless the player is tagged as a PB Vision account
+   *   (by their uid, or by an email that belongs to one), in which case that
+   *   account's own name is shown.
    * @property {string} [email] the player's email address. The player is
    *   emailed that they were tagged. If the address belongs to a PB Vision
    *   account, the game is added to that account's library; if not, the game
    *   joins their library when they sign up with this address.
+   * @property {string} [uid] the player's PB Vision account ID (uid).
    */
 
   /**
