@@ -466,11 +466,11 @@ data is enabled for your API key, only some of these fields may be present):
 - `error` is only present if your video could not be processed
 - `cv` contains low-level frame-by-frame data
 - `insights` describes the pickleball game in a detailed, shot-by-shot format
-  - Explore the _insights_ schema at <https://pbv-public.github.io/insights>
-  - Schema changes and diffs are in our [`pbv-public/insights` repo](https://github.com/pbv-public/insights/blob/dev/CHANGELOG.md)
+  - Explore the _insights_ schema at <https://storage.googleapis.com/pbv-pro/_de/insights/latest/docs/index.html>
+  - Schema changes are in the changelog of each version, listed at <https://storage.googleapis.com/pbv-pro/_de/insights/index.html>
 - `stats` various stats about the game for advanced players
-  - Explore the _stats_ schema at <https://pbv-public.github.io/stats?s=~stats~game>
-  - Schema changes and diffs are in our [`pbv-public/stats` repo](https://github.com/pbv-public/stats/blob/dev/CHANGELOG.md)
+  - Explore the _stats_ schema at <https://storage.googleapis.com/pbv-pro/_de/stats/latest/docs/index.html#stats/game>
+  - Schema changes are in the changelog of each version, listed at <https://storage.googleapis.com/pbv-pro/_de/stats/index.html>
 - only included if `insights` is included:
   - `vid` - the unique ID of the video in our system
   - `aiEngineVersion` - the version number of our AI used to process the video
